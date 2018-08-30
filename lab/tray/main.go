@@ -10,7 +10,7 @@ import (
 	"github.com/godbus/dbus"
 	"github.com/godbus/dbus/introspect"
 	"github.com/godbus/dbus/prop"
-	"github.com/gotk3/gotk3/glib"
+	//"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
 
@@ -20,6 +20,7 @@ const (
 	NotifierItemInterface          = "org.kde.StatusNotifierItem"
 	NotifierWatcherPath            = "/StatusNotifierWatcher"
 	NotifierWatcherService         = "org.kde.StatusNotifierWatcher"
+	NotifierWatcherRegisterHost    = "RegisterStatusNotifierHost"
 	NotifierIntrospectionInterface = "org.freedesktop.DBus.Introspectable"
 	PropertiesInterface            = "org.freedesktop.DBus.Properties"
 )
@@ -88,13 +89,13 @@ func activate(app *gtk.Application) {
 func main() {
 	log.Println("Tray starting")
 
-	app, err := gtk.ApplicationNew("com.elliotdwright.cnotifyd.lab.tray", glib.APPLICATION_FLAGS_NONE)
-	if err != nil {
-		log.Fatal(err)
-	}
+	//app, err := gtk.ApplicationNew("com.elliotdwright.cnotifyd.lab.tray", glib.APPLICATION_FLAGS_NONE)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 
-	app.Connect("activate", activate)
-	app.Run(nil)
+	//app.Connect("activate", activate)
+	//app.Run(nil)
 
 	conn, err := dbus.SessionBus()
 	if err != nil {
@@ -237,13 +238,13 @@ func main() {
 
 	time.Sleep(5 * time.Hour)
 
-	//hostObj := conn.Object(NotifierWatcherService, NotifierWatcherPath)
-	//
-	//// Register our host in the watcher.
-	//call := hostObj.Call(NotifierWatcherRegisterHost, 0, host)
-	//if call.Err != nil {
-	//	panic(call.Err)
-	//}
-	//
-	//fmt.Printf("%+v\n", call)
+	hostObj := conn.Object(NotifierWatcherService, NotifierWatcherPath)
+
+	// Register our host in the watcher.
+	call := hostObj.Call(NotifierWatcherRegisterHost, 0, host)
+	if call.Err != nil {
+		panic(call.Err)
+	}
+
+	fmt.Printf("%+v\n", call)
 }
