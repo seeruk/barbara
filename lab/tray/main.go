@@ -10,8 +10,6 @@ import (
 	"github.com/godbus/dbus"
 	"github.com/godbus/dbus/introspect"
 	"github.com/godbus/dbus/prop"
-	//"github.com/gotk3/gotk3/glib"
-	"github.com/gotk3/gotk3/gtk"
 )
 
 const (
@@ -33,69 +31,13 @@ func senderAndPath(serviceName string, sender dbus.Sender) (string, dbus.ObjectP
 	}
 }
 
-func activate(app *gtk.Application) {
-	gtk.Init(nil)
-
-	theme, err := gtk.IconThemeGetDefault()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	pixbuf, err := theme.LoadIcon("blueman-tray", 24, 0)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	image, err := gtk.ImageNewFromPixbuf(pixbuf)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	window, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	window.Connect("destroy", func() {
-		gtk.MainQuit()
-	})
-
-	grid, _ := gtk.GridNew()
-	grid.SetHAlign(gtk.ALIGN_CENTER)
-	grid.SetVAlign(gtk.ALIGN_CENTER)
-
-	cssProvider, _ := gtk.CssProviderNew()
-	cssProvider.LoadFromData(`
-		.tray-window {
-			background: #2A2A2A;
-		}
-	`)
-
-	styleContext, _ := grid.GetStyleContext()
-	styleContext.AddClass("tray-window")
-	styleContext.AddProvider(cssProvider, 1)
-
-	grid.Add(image)
-	window.Add(grid)
-	window.ShowAll()
-
-	gtk.Main()
-
-	time.Sleep(5 * time.Second)
-
-	os.Exit(1)
+type RegisterStatusNotifierItemInput struct {
+	Service string
+	Sender dbus.Sender
 }
 
 func main() {
 	log.Println("Tray starting")
-
-	//app, err := gtk.ApplicationNew("com.elliotdwright.cnotifyd.lab.tray", glib.APPLICATION_FLAGS_NONE)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-
-	//app.Connect("activate", activate)
-	//app.Run(nil)
 
 	conn, err := dbus.SessionBus()
 	if err != nil {
@@ -105,81 +47,93 @@ func main() {
 	// Add introspection, for something?
 	conn.Export(introspect.Introspectable(IntrospectXML), NotifierWatcherPath, NotifierIntrospectionInterface)
 
-	// Add watcher methods.
-	conn.ExportMethodTable(
-		map[string]interface{}{
-			"RegisterStatusNotifierItem": func(service string, sender dbus.Sender) *dbus.Error {
+	// This channel needs to be buffered, otherwise we'll end up stalling item registration, and
+	// potentially deadlocking.
+	registrationCh := make(chan RegisterStatusNotifierItemInput, 128)
+
+	go func() {
+		for {
+			select {
+			case registration := <-registrationCh:
 				fmt.Println("\nITEM REGISTERING?")
-				fmt.Println(service)
-				fmt.Printf("%+v\n", sender)
+				fmt.Println("service", registration.Service)
+				fmt.Printf("sender %+v\n", registration.Sender)
 
 				method := fmt.Sprintf("%s.Get", PropertiesInterface)
 				fmt.Println(method)
 
-				es, ep := senderAndPath(service, sender)
+				es, ep := senderAndPath(registration.Service, registration.Sender)
 				fmt.Println(es, ep)
 
-				go func() {
-					time.Sleep(100 * time.Millisecond)
+				itemObj := conn.Object(es, ep)
+				call := itemObj.Call(method, dbus.Flags(64), NotifierItemInterface, "Title")
+				if call.Err != nil {
+					return
+				}
 
-					itemObj := conn.Object(es, ep)
-					call := itemObj.Call(method, dbus.Flags(64), NotifierItemInterface, "Title")
-					if call.Err != nil {
-						return
-					}
+				title, _ := itemObj.GetProperty(fmt.Sprintf("%s.Title", NotifierItemInterface))
+				status, _ := itemObj.GetProperty(fmt.Sprintf("%s.Status", NotifierItemInterface))
+				windowID, _ := itemObj.GetProperty(fmt.Sprintf("%s.WindowId", NotifierItemInterface))
+				iconName, _ := itemObj.GetProperty(fmt.Sprintf("%s.IconName", NotifierItemInterface))
+				iconPixmap, _ := itemObj.GetProperty(fmt.Sprintf("%s.IconPixmap", NotifierItemInterface))
+				overlayIconName, _ := itemObj.GetProperty(fmt.Sprintf("%s.OverlayIconName", NotifierItemInterface))
+				overlayIconPixmap, _ := itemObj.GetProperty(fmt.Sprintf("%s.OverlayIconPixmap", NotifierItemInterface))
+				attentionIconName, _ := itemObj.GetProperty(fmt.Sprintf("%s.AttentionIconName", NotifierItemInterface))
+				attentionIconPixmap, _ := itemObj.GetProperty(fmt.Sprintf("%s.AttentionIconPixmap", NotifierItemInterface))
+				attentionMovieName, _ := itemObj.GetProperty(fmt.Sprintf("%s.AttentionMovieName", NotifierItemInterface))
+				tooltip, _ := itemObj.GetProperty(fmt.Sprintf("%s.ToolTip", NotifierItemInterface))
+				itemIsMenu, _ := itemObj.GetProperty(fmt.Sprintf("%s.ItemIsMenu", NotifierItemInterface))
+				menu, _ := itemObj.GetProperty(fmt.Sprintf("%s.Menu", NotifierItemInterface))
 
-					title, _ := itemObj.GetProperty(fmt.Sprintf("%s.Title", NotifierItemInterface))
-					status, _ := itemObj.GetProperty(fmt.Sprintf("%s.Status", NotifierItemInterface))
-					windowID, _ := itemObj.GetProperty(fmt.Sprintf("%s.WindowId", NotifierItemInterface))
-					iconName, _ := itemObj.GetProperty(fmt.Sprintf("%s.IconName", NotifierItemInterface))
-					iconPixmap, _ := itemObj.GetProperty(fmt.Sprintf("%s.IconPixmap", NotifierItemInterface))
-					overlayIconName, _ := itemObj.GetProperty(fmt.Sprintf("%s.OverlayIconName", NotifierItemInterface))
-					overlayIconPixmap, _ := itemObj.GetProperty(fmt.Sprintf("%s.OverlayIconPixmap", NotifierItemInterface))
-					attentionIconName, _ := itemObj.GetProperty(fmt.Sprintf("%s.AttentionIconName", NotifierItemInterface))
-					attentionIconPixmap, _ := itemObj.GetProperty(fmt.Sprintf("%s.AttentionIconPixmap", NotifierItemInterface))
-					attentionMovieName, _ := itemObj.GetProperty(fmt.Sprintf("%s.AttentionMovieName", NotifierItemInterface))
-					tooltip, _ := itemObj.GetProperty(fmt.Sprintf("%s.ToolTip", NotifierItemInterface))
-					itemIsMenu, _ := itemObj.GetProperty(fmt.Sprintf("%s.ItemIsMenu", NotifierItemInterface))
-					menu, _ := itemObj.GetProperty(fmt.Sprintf("%s.Menu", NotifierItemInterface))
+				fmt.Println("title", title.String())
+				fmt.Println("status", status.String())
+				if windowID.Value() != nil {
+					fmt.Println("windowID", windowID.String())
+				}
+				if iconName.Value() != nil {
+					fmt.Println("iconName", iconName.String())
+				}
+				if iconPixmap.Value() != nil {
+					fmt.Printf("iconPixmap: %v\n", iconPixmap.Value())
+				}
+				if overlayIconName.Value() != nil {
+					fmt.Println("overlayIconName", overlayIconName.String())
+				}
+				if overlayIconPixmap.Value() != nil {
+					fmt.Printf("overlayIconPixmap: %v\n", overlayIconPixmap.Value())
+				}
+				if attentionIconName.Value() != nil {
+					fmt.Println("attentionIconName", attentionIconName.String())
+				}
+				if attentionIconPixmap.Value() != nil {
+					fmt.Printf("attentionIconPixmap: %v\n", attentionIconPixmap.Value())
+				}
+				if attentionMovieName.Value() != nil {
+					fmt.Println("attentionMovieName", attentionMovieName.String())
+				}
+				if tooltip.Value() != nil {
+					fmt.Println("tooltip", tooltip.String())
+				}
+				if itemIsMenu.Value() != nil {
+					fmt.Println("itemIsMenu", itemIsMenu.String())
+				}
+				if menu.Value() != nil {
+					fmt.Println("menu", menu.String())
+				}
 
-					fmt.Println(title.String())
-					fmt.Println(status.String())
-					if windowID.Value() != nil {
-						fmt.Println("windowID", windowID.String())
-					}
-					if iconName.Value() != nil {
-						fmt.Println("iconName", iconName.String())
-					}
-					if iconPixmap.Value() != nil {
-						fmt.Printf("iconPixmap: %v\n", iconPixmap.Value())
-					}
-					if overlayIconName.Value() != nil {
-						fmt.Println("overlayIconName", overlayIconName.String())
-					}
-					if overlayIconPixmap.Value() != nil {
-						fmt.Printf("overlayIconPixmap: %v\n", overlayIconPixmap.Value())
-					}
-					if attentionIconName.Value() != nil {
-						fmt.Println("attentionIconName", attentionIconName.String())
-					}
-					if attentionIconPixmap.Value() != nil {
-						fmt.Printf("attentionIconPixmap: %v\n", attentionIconPixmap.Value())
-					}
-					if attentionMovieName.Value() != nil {
-						fmt.Println("attentionMovieName", attentionMovieName.String())
-					}
-					if tooltip.Value() != nil {
-						fmt.Println("tooltip", tooltip.String())
-					}
-					if itemIsMenu.Value() != nil {
-						fmt.Println("itemIsMenu", itemIsMenu.String())
-					}
-					if menu.Value() != nil {
-						fmt.Println("menu", menu.String())
-					}
+				fmt.Println()
+			}
+		}
+	}()
 
-					fmt.Println()
-				}()
+	// Add watcher methods.
+	conn.ExportMethodTable(
+		map[string]interface{}{
+			"RegisterStatusNotifierItem": func(service string, sender dbus.Sender) *dbus.Error {
+				registrationCh <- RegisterStatusNotifierItemInput{
+					Service: service,
+					Sender: sender,
+				}
 
 				return nil
 			},
