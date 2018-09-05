@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/godbus/dbus"
@@ -33,7 +34,7 @@ func senderAndPath(serviceName string, sender dbus.Sender) (string, dbus.ObjectP
 
 type RegisterStatusNotifierItemInput struct {
 	Service string
-	Sender dbus.Sender
+	Sender  dbus.Sender
 }
 
 func main() {
@@ -44,7 +45,8 @@ func main() {
 		panic(err)
 	}
 
-	// Add introspection, for something?
+	// Add introspection, so that other DBUS-using applications can see which methods we supposedly
+	// support, the XML should probably be generated from a struct or something.
 	conn.Export(introspect.Introspectable(IntrospectXML), NotifierWatcherPath, NotifierIntrospectionInterface)
 
 	// This channel needs to be buffered, otherwise we'll end up stalling item registration, and
@@ -132,7 +134,7 @@ func main() {
 			"RegisterStatusNotifierItem": func(service string, sender dbus.Sender) *dbus.Error {
 				registrationCh <- RegisterStatusNotifierItemInput{
 					Service: service,
-					Sender: sender,
+					Sender:  sender,
 				}
 
 				return nil
@@ -146,13 +148,50 @@ func main() {
 		NotifierWatcherService,
 	)
 
-	prop.New(conn, NotifierWatcherPath, map[string]map[string]*prop.Prop{
-		NotifierWatcherService: {
-			"IsStatusNotifierHostRegistered": {true, false, prop.EmitTrue, nil},
-			"ProtocolVersion":                {0, false, prop.EmitTrue, nil},
-			"RegisteredStatusItems":          {[]string{}, false, prop.EmitTrue, nil},
-		},
-	})
+	var hostRegistered bool
+
+	refreshPops := func() {
+		// Properties on the bus are exposed like this. It's a function, because it needs to be
+		// pushed again to the bus when anything changes... all at once? (Maybe a diff can be sent,
+		// but that doesn't really matter, a full update is just as easy).
+		prop.New(conn, NotifierWatcherPath, map[string]map[string]*prop.Prop{
+			NotifierWatcherService: {
+				"IsStatusNotifierHostRegistered": {hostRegistered, false, prop.EmitTrue, nil},
+				"ProtocolVersion":                {1, false, prop.EmitTrue, nil},
+				"RegisteredStatusNotifierItems":  {[]string{"toplel"}, false, prop.EmitTrue, nil},
+			},
+		})
+	}
+
+	// Set initial properties state.
+	refreshPops()
+
+	c := make(chan *dbus.Signal, 16)
+	conn.Signal(c)
+
+	go func() {
+		for v := range c {
+			if v.Name == "org.freedesktop.DBus.NameAcquired" {
+				if len(v.Body) == 0 {
+					continue
+				}
+
+				first := v.Body[0]
+
+				switch s := first.(type) {
+				case string:
+					if strings.HasPrefix(s, "org.kde.StatusNotifierHost") {
+						// Is there any point to this? If there aren't any hosts, then we've got a
+						// pretty major bug, and there's no way to unregister, so how does this know
+						// to behave any differently anyway? It just seems... incomplete?
+						hostRegistered = true
+					}
+				}
+			}
+
+			refreshPops()
+		}
+	}()
 
 	// Request the name of the watcher service, and do not queue up to wait to become the primary
 	// owner of the name. Messages get sent to this service if it is the primary.
@@ -166,11 +205,15 @@ func main() {
 		panic(fmt.Errorf("service %s already taken", NotifierWatcherService))
 	}
 
+	fmt.Println("IS PRIMARY WATCHER, CONTINUING")
+
 	host := fmt.Sprintf(NotifierHostService, os.Getpid())
 
 	// Request the name of the host service. The host must only be present on the bus, as primary.
 	// After this, the host should be sent items by the watcher. The presence of both the watcher
 	// and the host are what allows items to be retrieved (I think?)
+	//
+	// Or is a host something that "owns" an item to be displayed?
 	reply, err = conn.RequestName(host, dbus.NameFlagDoNotQueue)
 	if err != nil {
 		panic(err)
@@ -190,8 +233,6 @@ func main() {
 		}
 	}()
 
-	time.Sleep(5 * time.Hour)
-
 	hostObj := conn.Object(NotifierWatcherService, NotifierWatcherPath)
 
 	// Register our host in the watcher.
@@ -201,4 +242,6 @@ func main() {
 	}
 
 	fmt.Printf("%+v\n", call)
+
+	time.Sleep(5 * time.Hour)
 }
