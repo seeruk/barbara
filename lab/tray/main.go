@@ -5,8 +5,9 @@ import (
 	"log"
 	"os"
 	"regexp"
-	"strings"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/godbus/dbus"
 	"github.com/godbus/dbus/introspect"
@@ -57,6 +58,8 @@ func main() {
 		for {
 			select {
 			case registration := <-registrationCh:
+				continue
+
 				fmt.Println("\nITEM REGISTERING?")
 				fmt.Println("service", registration.Service)
 				fmt.Printf("sender %+v\n", registration.Sender)
@@ -140,7 +143,15 @@ func main() {
 				return nil
 			},
 			"RegisterStatusNotifierHost": func(service string, sender dbus.Sender) *dbus.Error {
-				fmt.Println("HOST REGISTERING?")
+				fmt.Println("HOST REGISTERING?", service)
+
+				// Emitting signals, maybe we should emit both a freedesktop one and a kde one?
+				// Need to test that this works, by starting something that listens for signals.
+				err := conn.Emit(NotifierWatcherPath, "org.kde.StatusNotifierWatcher.StatusNotifierHostRegistered")
+				if err != nil {
+					fmt.Println("SIGNAL ERROR", err)
+				}
+
 				return nil
 			},
 		},
@@ -158,7 +169,7 @@ func main() {
 			NotifierWatcherService: {
 				"IsStatusNotifierHostRegistered": {hostRegistered, false, prop.EmitTrue, nil},
 				"ProtocolVersion":                {1, false, prop.EmitTrue, nil},
-				"RegisteredStatusNotifierItems":  {[]string{"toplel"}, false, prop.EmitTrue, nil},
+				"RegisteredStatusNotifierItems":  {[]string{}, false, prop.EmitTrue, nil},
 			},
 		})
 	}
@@ -166,28 +177,19 @@ func main() {
 	// Set initial properties state.
 	refreshPops()
 
+	// This might not be how these things are meant to be handled... maybe signals are things that
+	// are propagated _from_ the service, not something
 	c := make(chan *dbus.Signal, 16)
+
+	// This actually registers the channel, so conn.RemoveSignal should be called.
 	conn.Signal(c)
+
+	conn.BusObject().Call("org.freedesktop.StatusNotifierWatcher.StatusNotifierHostRegistered", 0, "")
 
 	go func() {
 		for v := range c {
-			if v.Name == "org.freedesktop.DBus.NameAcquired" {
-				if len(v.Body) == 0 {
-					continue
-				}
-
-				first := v.Body[0]
-
-				switch s := first.(type) {
-				case string:
-					if strings.HasPrefix(s, "org.kde.StatusNotifierHost") {
-						// Is there any point to this? If there aren't any hosts, then we've got a
-						// pretty major bug, and there's no way to unregister, so how does this know
-						// to behave any differently anyway? It just seems... incomplete?
-						hostRegistered = true
-					}
-				}
-			}
+			fmt.Println("SIGNAL RECEIVED")
+			spew.Dump(v)
 
 			refreshPops()
 		}
@@ -241,7 +243,7 @@ func main() {
 		panic(call.Err)
 	}
 
-	fmt.Printf("%+v\n", call)
+	fmt.Printf("Call: %+v\n", call)
 
 	time.Sleep(5 * time.Hour)
 }
