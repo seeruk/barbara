@@ -24,7 +24,7 @@ func main() {
 		gtk.MainQuit()
 	})
 
-	button := createButton(createMenu(createMenuItem()))
+	button := createButton(createMenu(createMenuItem(), createImageMenuItem()))
 
 	win.Add(button)
 	win.ShowAll()
@@ -60,6 +60,36 @@ func createMenu(items ...*gtk.MenuItem) *gtk.Menu {
 	menu.ShowAll()
 
 	return menu
+}
+
+func createImageMenuItem() *gtk.MenuItem {
+	box, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
+	if err != nil {
+		panic(err)
+	}
+
+	icon, err := gtk.ImageNewFromIconName("blueman-tray", gtk.ICON_SIZE_MENU)
+	if err != nil {
+		panic(err)
+	}
+
+	label, err := gtk.LabelNewWithMnemonic("_Image Item")
+	if err != nil {
+		panic(err)
+	}
+
+	box.Add(icon)
+	box.Add(label)
+
+	menuItem, err := gtk.MenuItemNew()
+	if err != nil {
+		panic(err)
+	}
+
+	menuItem.Add(box)
+	menuItem.ShowAll()
+
+	return menuItem
 }
 
 func createMenuItem() *gtk.MenuItem {
