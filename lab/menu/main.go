@@ -16,6 +16,9 @@ func main() {
 		log.Fatal("Unable to create window:", err)
 	}
 
+	// This'll fling it to the top of the screen by default probably, at least on i3.
+	win.SetTypeHint(gdk.WINDOW_TYPE_HINT_DOCK)
+
 	win.SetTitle("Simple Example")
 	win.Connect("destroy", func() {
 		gtk.MainQuit()
