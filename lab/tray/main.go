@@ -58,8 +58,6 @@ func main() {
 		for {
 			select {
 			case registration := <-registrationCh:
-				continue
-
 				fmt.Println("\nITEM REGISTERING?")
 				fmt.Println("service", registration.Service)
 				fmt.Printf("sender %+v\n", registration.Sender)
@@ -124,6 +122,16 @@ func main() {
 				}
 				if menu.Value() != nil {
 					fmt.Println("menu", menu.String())
+
+					fmt.Println("CALLING MENU THING")
+					menuObj := conn.Object(string(registration.Sender), "/org/ayatana/NotificationItem/blueman/Menu")
+
+					call := menuObj.Call("com.canonical.dbusmenu.AboutToShowGroup", 0, []int32{0})
+					if call.Err != nil {
+						fmt.Println(call.Err)
+					}
+
+					fmt.Println("CALLED MENU THING")
 				}
 
 				fmt.Println()
