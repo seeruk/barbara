@@ -57,7 +57,7 @@ func main() {
 	}
 
 	styles.AddClass("board-window")
-	styles.AddProvider(cssProvider, 1)
+	styles.AddProvider(cssProvider, gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
 	leftBox, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
 	if err != nil {
@@ -107,7 +107,7 @@ func main() {
 		}
 	}()
 
-	button := createButton(createMenu(
+	button := createUserMenuButton(createMenu(
 		createLogOffMenuItem(),
 		createRebootMenuItem(),
 		createShutdownMenuItem(),
@@ -121,22 +121,30 @@ func main() {
 	gtk.Main()
 }
 
-func createButton(menu *gtk.Menu) *gtk.Button {
+func createUserMenuButton(menu *gtk.Menu) *gtk.Button {
+	cssProvider, _ := gtk.CssProviderNew()
+	cssProvider.LoadFromData(`
+		.board-button { background-color: #1a1a1a; }
+		.board-button:hover { background-color: #2a2a2a; }
+		.board-button:active { background-color: #2a2a2a; }
+	`)
+
 	usr, err := user.Current()
 	if err != nil {
 		panic(err)
 	}
 
 	// Created the button to show the menu.
-	button, err := gtk.ButtonNewWithLabel(usr.Name)
-	if err != nil {
-		panic(err)
-	}
-
+	button, _ := gtk.ButtonNewWithLabel(usr.Name)
 	button.Connect("clicked", func(btn *gtk.Button) {
 		menu.PopupAtWidget(btn, gdk.GDK_GRAVITY_NORTH_EAST, gdk.GDK_GRAVITY_SOUTH_EAST, nil)
-		//menu.PopupAtPointer(nil)
 	})
+
+	button.SetName("board-user-menu")
+
+	styles, _ := button.GetStyleContext()
+	styles.AddClass("board-button")
+	styles.AddProvider(cssProvider, gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
 	return button
 }
@@ -158,91 +166,44 @@ func createMenu(items ...*gtk.MenuItem) *gtk.Menu {
 }
 
 func createLogOffMenuItem() *gtk.MenuItem {
-	box, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
-	if err != nil {
-		panic(err)
-	}
-
-	icon, err := gtk.ImageNewFromIconName("system-log-out", gtk.ICON_SIZE_MENU)
-	if err != nil {
-		panic(err)
-	}
-
-	label, err := gtk.LabelNewWithMnemonic("_Log Off")
-	if err != nil {
-		panic(err)
-	}
-
-	box.Add(icon)
-	box.Add(label)
-
-	menuItem, err := gtk.MenuItemNew()
-	if err != nil {
-		panic(err)
-	}
-
-	menuItem.Add(box)
-	menuItem.ShowAll()
-
-	menuItem.Connect("activate", func() {
+	return createMenuItem("_Log Off", "system-log-out", func() {
 		err := exec.Command("i3-msg", "exit").Start()
 		if err != nil {
 			log.Println(err)
 		}
 	})
-
-	return menuItem
 }
 
 func createRebootMenuItem() *gtk.MenuItem {
-	box, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
-	if err != nil {
-		panic(err)
-	}
-
-	icon, err := gtk.ImageNewFromIconName("system-reboot", gtk.ICON_SIZE_MENU)
-	if err != nil {
-		panic(err)
-	}
-
-	label, err := gtk.LabelNewWithMnemonic("_Reboot")
-	if err != nil {
-		panic(err)
-	}
-
-	box.Add(icon)
-	box.Add(label)
-
-	menuItem, err := gtk.MenuItemNew()
-	if err != nil {
-		panic(err)
-	}
-
-	menuItem.Add(box)
-	menuItem.ShowAll()
-
-	menuItem.Connect("activate", func() {
+	return createMenuItem("_Reboot", "system-reboot", func() {
 		err := exec.Command("sudo", "systemctl", "reboot").Start()
 		if err != nil {
 			log.Println(err)
 		}
 	})
-
-	return menuItem
 }
 
 func createShutdownMenuItem() *gtk.MenuItem {
+	return createMenuItem("_Shutdown", "system-shutdown", func() {
+		err := exec.Command("sudo", "systemctl", "poweroff").Start()
+		if err != nil {
+			log.Println(err)
+		}
+	})
+}
+
+func createMenuItem(mnemonic, iconName string, activate func()) *gtk.MenuItem {
 	box, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
 	if err != nil {
 		panic(err)
 	}
 
-	icon, err := gtk.ImageNewFromIconName("system-shutdown", gtk.ICON_SIZE_MENU)
+	icon, err := gtk.ImageNewFromIconName(iconName, gtk.ICON_SIZE_MENU)
 	if err != nil {
 		panic(err)
 	}
 
-	label, err := gtk.LabelNewWithMnemonic("_Shutdown")
+	label, err := gtk.LabelNewWithMnemonic(mnemonic)
 	if err != nil {
 		panic(err)
 	}
@@ -258,12 +219,7 @@ func createShutdownMenuItem() *gtk.MenuItem {
 	menuItem.Add(box)
 	menuItem.ShowAll()
 
-	menuItem.Connect("activate", func() {
-		err := exec.Command("sudo", "systemctl", "poweroff").Start()
-		if err != nil {
-			log.Println(err)
-		}
-	})
+	menuItem.Connect("activate", activate)
 
 	return menuItem
 }
