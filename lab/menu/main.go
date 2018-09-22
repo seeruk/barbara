@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
@@ -19,14 +20,78 @@ func main() {
 	// This'll fling it to the top of the screen by default probably, at least on i3.
 	win.SetTypeHint(gdk.WINDOW_TYPE_HINT_DOCK)
 
+	// Use dark theme.
+	settings, _ := gtk.SettingsGetDefault()
+	settings.SetProperty("gtk-application-prefer-dark-theme", true)
+
 	win.SetTitle("Simple Example")
 	win.Connect("destroy", func() {
 		gtk.MainQuit()
 	})
 
-	button := createButton(createMenu(createMenuItem(), createImageMenuItem()))
+	barBox, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
+	if err != nil {
+		panic(err)
+	}
 
-	win.Add(button)
+	leftBox, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
+	if err != nil {
+		panic(err)
+	}
+
+	midBox, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
+	if err != nil {
+		panic(err)
+	}
+
+	rightBox, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
+	if err != nil {
+		panic(err)
+	}
+
+	barBox.SetHAlign(gtk.ALIGN_FILL)
+	barBox.SetHExpand(true)
+
+	barBox.SetMarginTop(4)
+	barBox.SetMarginBottom(4)
+
+	leftBox.SetHAlign(gtk.ALIGN_START)
+	leftBox.SetHExpand(true)
+
+	midBox.SetHAlign(gtk.ALIGN_CENTER)
+	midBox.SetHExpand(true)
+
+	rightBox.SetHAlign(gtk.ALIGN_END)
+	rightBox.SetHExpand(true)
+
+	barBox.Add(leftBox)
+	barBox.Add(midBox)
+	barBox.Add(rightBox)
+
+	leftLbl, _ := gtk.LabelNew("This is the left")
+	leftBox.Add(leftLbl)
+
+	midLbl, _ := gtk.LabelNew("")
+	midBox.Add(midLbl)
+
+	go func() {
+		ticker := time.NewTicker(time.Second)
+
+		for {
+			select {
+			case <-ticker.C:
+				midLbl.SetLabel(time.Now().Format("Monday, 02 Jan - 15:04:05"))
+			}
+		}
+	}()
+
+	button := createButton(createMenu(createMenuItem(), createImageMenuItem()))
+	button.SetMarginStart(4)
+	button.SetMarginEnd(4)
+
+	rightBox.Add(button)
+
+	win.Add(barBox)
 	win.ShowAll()
 
 	gtk.Main()
