@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/davecgh/go-spew/spew"
 	"log"
 	"os/exec"
 	"os/user"
@@ -22,9 +23,6 @@ func main() {
 	// This'll fling it to the top of the screen by default probably, at least on i3.
 	win.SetTypeHint(gdk.WINDOW_TYPE_HINT_DOCK)
 	win.SetDecorated(false)
-
-	// Put the window at the bottom?
-	win.Move(0, 1080)
 
 	// Use dark theme.
 	settings, _ := gtk.SettingsGetDefault()
@@ -50,6 +48,12 @@ func main() {
 			background: #1a1a1a;
 			padding: 7px;
 		}
+
+		.board-button { background-color: #1a1a1a; }
+		.board-button:hover { background-color: #2a2a2a; }
+		.board-button:active { background-color: #2a2a2a; }
+
+		.board-datetime { padding: 0 7px; }
 	`)
 
 	styles, err := barBox.GetStyleContext()
@@ -65,11 +69,6 @@ func main() {
 		panic(err)
 	}
 
-	midBox, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
-	if err != nil {
-		panic(err)
-	}
-
 	rightBox, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
 	if err != nil {
 		panic(err)
@@ -81,21 +80,32 @@ func main() {
 	leftBox.SetHAlign(gtk.ALIGN_START)
 	leftBox.SetHExpand(true)
 
-	midBox.SetHAlign(gtk.ALIGN_CENTER)
-	midBox.SetHExpand(true)
-
 	rightBox.SetHAlign(gtk.ALIGN_END)
 	rightBox.SetHExpand(true)
 
 	barBox.Add(leftBox)
-	barBox.Add(midBox)
 	barBox.Add(rightBox)
 
-	leftLbl, _ := gtk.LabelNew("This is the left")
-	leftBox.Add(leftLbl)
+	ws1, _ := gtk.ButtonNewWithLabel("1")
 
-	midLbl, _ := gtk.LabelNew("")
-	midBox.Add(midLbl)
+	styles, _ = ws1.GetStyleContext()
+	styles.AddClass("board-button")
+	styles.AddProvider(cssProvider, gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+	ws7, _ := gtk.ButtonNewWithLabel("7")
+
+	styles, _ = ws7.GetStyleContext()
+	styles.AddClass("board-button")
+	styles.AddProvider(cssProvider, gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+	leftBox.Add(ws1)
+	leftBox.Add(ws7)
+
+	rightLbl, _ := gtk.LabelNew(time.Now().Format("Monday, 02 Jan - 15:04:05"))
+
+	styles, _ = rightLbl.GetStyleContext()
+	styles.AddClass("board-datetime")
+	styles.AddProvider(cssProvider, gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
 	go func() {
 		ticker := time.NewTicker(time.Second)
@@ -107,7 +117,7 @@ func main() {
 				glib.IdleAdd(func(label *gtk.Label) bool {
 					label.SetLabel(time.Now().Format("Monday, 02 Jan - 15:04:05"))
 					return false
-				}, midLbl)
+				}, rightLbl)
 			}
 		}
 	}()
@@ -118,18 +128,29 @@ func main() {
 		createShutdownMenuItem(),
 	))
 
+	rightBox.Add(rightLbl)
 	rightBox.Add(createSoundMenuButton())
 	rightBox.Add(button)
 
+	// We have one display per X session normally?
+	display, _ := gdk.DisplayGetDefault()
+
+	// Monitor relates to display... how?
+	monitor, _ := display.GetPrimaryMonitor()
+
+	monGeo := monitor.GetGeometry()
+
+	//win.SetGravity(gdk.GDK_GRAVITY_SOUTH_WEST)
+	win.Move(0, monGeo.GetHeight() - win.GetAllocation().GetHeight())
+
 	win.Add(barBox)
 	win.ShowAll()
+
 
 	gtk.Main()
 }
 
 func createSoundMenuButton() *gtk.Button {
-	scale, _ := gtk.ScaleNewWithRange(gtk.ORIENTATION_VERTICAL, 0, 100, 5)
-
 	cssProvider, _ := gtk.CssProviderNew()
 	cssProvider.LoadFromData(`
 		.board-button { background-color: #1a1a1a; }
@@ -137,18 +158,77 @@ func createSoundMenuButton() *gtk.Button {
 		.board-button:active { background-color: #2a2a2a; }
 	`)
 
-	// TODO(seeruk): Maybe it's better to use an icon font if possible?
-	icon, _ := gtk.ImageNewFromIconName("audio-volume-high", gtk.ICON_SIZE_MENU)
+	var open bool
+
+	icon, err := gtk.ImageNewFromIconName("audio-volume-muted", gtk.ICON_SIZE_BUTTON)
+	if err != nil {
+		panic(err)
+	}
+
 	button, _ := gtk.ButtonNew()
 	button.Add(icon)
 
-	// TODO(seeruk): This is the right type to use, but it's not implemented in gotk3 yet...
-	popover, _ := gtk.PopoverNew(button)
-	popover.Add(scale)
+	win, _ := gtk.WindowNew(gtk.WINDOW_POPUP)
+	win.SetDecorated(false)
+	win.SetKeepAbove(true)
+	win.SetPosition(gtk.WIN_POS_NONE)
+	win.SetResizable(false)
+	win.SetSkipTaskbarHint(true)
+	win.SetTitle("board volume")
+	win.SetTypeHint(gdk.WINDOW_TYPE_HINT_POPUP_MENU)
+	win.Stick()
 
-	button.Connect("activate", func(btn *gtk.Button) {
-		popover.ShowAll()
-		//menu.PopupAtWidget(btn, gdk.GDK_GRAVITY_NORTH_EAST, gdk.GDK_GRAVITY_SOUTH_EAST, nil)
+	cssProvider2, _ := gtk.CssProviderNew()
+	cssProvider2.LoadFromData(`
+		scale {
+			border: 1px solid #333;
+			min-width: 100px;
+			padding: 7px 10px;
+		}
+	`)
+
+	scale, _ := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, 0, 1, 0.02)
+	scale.SetDrawValue(false)
+	scale.ShowAll()
+
+	scale.Connect("value-changed", func() {
+		val := scale.GetValue()
+
+		switch {
+		case val > 0.66:
+			icon.SetFromIconName("audio-volume-high", gtk.ICON_SIZE_BUTTON)
+		case val > 0.33:
+			icon.SetFromIconName("audio-volume-medium", gtk.ICON_SIZE_BUTTON)
+		case val > 0:
+			icon.SetFromIconName("audio-volume-low", gtk.ICON_SIZE_BUTTON)
+		case val == 0:
+			icon.SetFromIconName("audio-volume-muted", gtk.ICON_SIZE_BUTTON)
+		}
+	})
+
+	styles2, _ := scale.GetStyleContext()
+	styles2.AddProvider(cssProvider2, gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+	win.Add(scale)
+
+	button.Connect("clicked", func(btn *gtk.Button) {
+		if open {
+			win.Hide()
+			open = false
+		} else {
+			btnAlloc := btn.GetAllocation()
+
+			spew.Dump(btnAlloc)
+
+			win.ShowAll()
+			win.Move(
+				btnAlloc.GetX() + btnAlloc.GetWidth() - 122,
+				btnAlloc.GetY() + btnAlloc.GetHeight(),
+			)
+
+			open = true
+		}
+
 	})
 
 	styles, _ := button.GetStyleContext()
@@ -171,8 +251,13 @@ func createUserMenuButton(menu *gtk.Menu) *gtk.Button {
 		panic(err)
 	}
 
+	name := usr.Name
+	if name == "" {
+		name = usr.Username
+	}
+
 	// Created the button to show the menu.
-	button, _ := gtk.ButtonNewWithLabel(usr.Name)
+	button, _ := gtk.ButtonNewWithLabel(name)
 	button.Connect("clicked", func(btn *gtk.Button) {
 		menu.PopupAtWidget(btn, gdk.GDK_GRAVITY_NORTH_EAST, gdk.GDK_GRAVITY_SOUTH_EAST, nil)
 	})
