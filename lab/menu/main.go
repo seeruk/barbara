@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gotk3/gotk3/gdk"
+	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
 
@@ -102,12 +103,16 @@ func main() {
 		for {
 			select {
 			case <-ticker.C:
-				midLbl.SetLabel(time.Now().Format("Monday, 02 Jan - 15:04:05"))
+				// Add this to the main loop, from this thread.
+				glib.IdleAdd(func(label *gtk.Label) bool {
+					label.SetLabel(time.Now().Format("Monday, 02 Jan - 15:04:05"))
+					return false
+				}, midLbl)
 			}
 		}
 	}()
 
-	button := createUserMenuButton(createMenu(
+	button := createUserMenuButton(createUserMenu(
 		createLogOffMenuItem(),
 		createRebootMenuItem(),
 		createShutdownMenuItem(),
@@ -149,7 +154,7 @@ func createUserMenuButton(menu *gtk.Menu) *gtk.Button {
 	return button
 }
 
-func createMenu(items ...*gtk.MenuItem) *gtk.Menu {
+func createUserMenu(items ...*gtk.MenuItem) *gtk.Menu {
 	menu, err := gtk.MenuNew()
 	if err != nil {
 		panic(err)
