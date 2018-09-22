@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"os/exec"
+	"os/user"
 	"time"
 
 	"github.com/gotk3/gotk3/gdk"
@@ -34,6 +35,26 @@ func main() {
 		panic(err)
 	}
 
+	cssProvider, err := gtk.CssProviderNew()
+	if err != nil {
+		panic(err)
+	}
+
+	cssProvider.LoadFromData(`
+		.board-window {
+			background: #1a1a1a;
+			padding: 4px;
+		}
+	`)
+
+	styles, err := barBox.GetStyleContext()
+	if err != nil {
+		panic(err)
+	}
+
+	styles.AddClass("board-window")
+	styles.AddProvider(cssProvider, 1)
+
 	leftBox, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
 	if err != nil {
 		panic(err)
@@ -51,9 +72,6 @@ func main() {
 
 	barBox.SetHAlign(gtk.ALIGN_FILL)
 	barBox.SetHExpand(true)
-
-	barBox.SetMarginTop(4)
-	barBox.SetMarginBottom(4)
 
 	leftBox.SetHAlign(gtk.ALIGN_START)
 	leftBox.SetHExpand(true)
@@ -85,9 +103,11 @@ func main() {
 		}
 	}()
 
-	button := createButton(createMenu(createMenuItem(), createImageMenuItem()))
-	button.SetMarginStart(4)
-	button.SetMarginEnd(4)
+	button := createButton(createMenu(
+		createLogOffMenuItem(),
+		createRebootMenuItem(),
+		createShutdownMenuItem(),
+	))
 
 	rightBox.Add(button)
 
@@ -98,8 +118,13 @@ func main() {
 }
 
 func createButton(menu *gtk.Menu) *gtk.Button {
+	usr, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+
 	// Created the button to show the menu.
-	button, err := gtk.ButtonNewWithLabel("Show Menu")
+	button, err := gtk.ButtonNewWithLabel(usr.Name)
 	if err != nil {
 		panic(err)
 	}
@@ -127,18 +152,18 @@ func createMenu(items ...*gtk.MenuItem) *gtk.Menu {
 	return menu
 }
 
-func createImageMenuItem() *gtk.MenuItem {
+func createLogOffMenuItem() *gtk.MenuItem {
 	box, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
 	if err != nil {
 		panic(err)
 	}
 
-	icon, err := gtk.ImageNewFromIconName("blueman-tray", gtk.ICON_SIZE_MENU)
+	icon, err := gtk.ImageNewFromIconName("system-log-out", gtk.ICON_SIZE_MENU)
 	if err != nil {
 		panic(err)
 	}
 
-	label, err := gtk.LabelNewWithMnemonic("_Image Item")
+	label, err := gtk.LabelNewWithMnemonic("_Log Off")
 	if err != nil {
 		panic(err)
 	}
@@ -154,29 +179,85 @@ func createImageMenuItem() *gtk.MenuItem {
 	menuItem.Add(box)
 	menuItem.ShowAll()
 
+	menuItem.Connect("activate", func() {
+		err := exec.Command("i3-msg", "exit").Start()
+		if err != nil {
+			log.Println(err)
+		}
+	})
+
 	return menuItem
 }
 
-func createMenuItem() *gtk.MenuItem {
-	// Mnemonics allow us to use the _Label notation to allow us to press the key following an _ to
-	// activate the menu item.
-	menuItem, err := gtk.MenuItemNewWithMnemonic("_Test Item")
+func createRebootMenuItem() *gtk.MenuItem {
+	box, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
 	if err != nil {
 		panic(err)
 	}
 
-	// Used for shortcut keys later...
-	acgroup, err := gtk.AccelGroupNew()
+	icon, err := gtk.ImageNewFromIconName("system-reboot", gtk.ICON_SIZE_MENU)
 	if err != nil {
 		panic(err)
 	}
 
-	// Show shortcuts on menu items, something like this (not sure actually what an AccelGroup is...
-	menuItem.AddAccelerator("activate", acgroup, gdk.KEY_f, gdk.GDK_CONTROL_MASK, gtk.ACCEL_VISIBLE)
+	label, err := gtk.LabelNewWithMnemonic("_Reboot")
+	if err != nil {
+		panic(err)
+	}
 
-	// When the item is clicked, what should happen?
+	box.Add(icon)
+	box.Add(label)
+
+	menuItem, err := gtk.MenuItemNew()
+	if err != nil {
+		panic(err)
+	}
+
+	menuItem.Add(box)
+	menuItem.ShowAll()
+
 	menuItem.Connect("activate", func() {
-		fmt.Println("clicked menu item")
+		err := exec.Command("sudo", "systemctl", "reboot").Start()
+		if err != nil {
+			log.Println(err)
+		}
+	})
+
+	return menuItem
+}
+
+func createShutdownMenuItem() *gtk.MenuItem {
+	box, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 6)
+	if err != nil {
+		panic(err)
+	}
+
+	icon, err := gtk.ImageNewFromIconName("system-shutdown", gtk.ICON_SIZE_MENU)
+	if err != nil {
+		panic(err)
+	}
+
+	label, err := gtk.LabelNewWithMnemonic("_Shutdown")
+	if err != nil {
+		panic(err)
+	}
+
+	box.Add(icon)
+	box.Add(label)
+
+	menuItem, err := gtk.MenuItemNew()
+	if err != nil {
+		panic(err)
+	}
+
+	menuItem.Add(box)
+	menuItem.ShowAll()
+
+	menuItem.Connect("activate", func() {
+		err := exec.Command("sudo", "systemctl", "poweroff").Start()
+		if err != nil {
+			log.Println(err)
+		}
 	})
 
 	return menuItem
