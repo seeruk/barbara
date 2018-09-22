@@ -20,6 +20,10 @@ func main() {
 
 	// This'll fling it to the top of the screen by default probably, at least on i3.
 	win.SetTypeHint(gdk.WINDOW_TYPE_HINT_DOCK)
+	win.SetDecorated(false)
+
+	// Put the window at the bottom?
+	win.Move(0, 1080)
 
 	// Use dark theme.
 	settings, _ := gtk.SettingsGetDefault()
@@ -43,7 +47,7 @@ func main() {
 	cssProvider.LoadFromData(`
 		.board-window {
 			background: #1a1a1a;
-			padding: 4px;
+			padding: 7px;
 		}
 	`)
 
@@ -130,7 +134,8 @@ func createButton(menu *gtk.Menu) *gtk.Button {
 	}
 
 	button.Connect("clicked", func(btn *gtk.Button) {
-		menu.PopupAtPointer(nil)
+		menu.PopupAtWidget(btn, gdk.GDK_GRAVITY_NORTH_EAST, gdk.GDK_GRAVITY_SOUTH_EAST, nil)
+		//menu.PopupAtPointer(nil)
 	})
 
 	return button
