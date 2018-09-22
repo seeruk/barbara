@@ -118,12 +118,44 @@ func main() {
 		createShutdownMenuItem(),
 	))
 
+	rightBox.Add(createSoundMenuButton())
 	rightBox.Add(button)
 
 	win.Add(barBox)
 	win.ShowAll()
 
 	gtk.Main()
+}
+
+func createSoundMenuButton() *gtk.Button {
+	scale, _ := gtk.ScaleNewWithRange(gtk.ORIENTATION_VERTICAL, 0, 100, 5)
+
+	cssProvider, _ := gtk.CssProviderNew()
+	cssProvider.LoadFromData(`
+		.board-button { background-color: #1a1a1a; }
+		.board-button:hover { background-color: #2a2a2a; }
+		.board-button:active { background-color: #2a2a2a; }
+	`)
+
+	// TODO(seeruk): Maybe it's better to use an icon font if possible?
+	icon, _ := gtk.ImageNewFromIconName("audio-volume-high", gtk.ICON_SIZE_MENU)
+	button, _ := gtk.ButtonNew()
+	button.Add(icon)
+
+	// TODO(seeruk): This is the right type to use, but it's not implemented in gotk3 yet...
+	popover, _ := gtk.PopoverNew(button)
+	popover.Add(scale)
+
+	button.Connect("activate", func(btn *gtk.Button) {
+		popover.ShowAll()
+		//menu.PopupAtWidget(btn, gdk.GDK_GRAVITY_NORTH_EAST, gdk.GDK_GRAVITY_SOUTH_EAST, nil)
+	})
+
+	styles, _ := button.GetStyleContext()
+	styles.AddClass("board-button")
+	styles.AddProvider(cssProvider, gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+	return button
 }
 
 func createUserMenuButton(menu *gtk.Menu) *gtk.Button {
