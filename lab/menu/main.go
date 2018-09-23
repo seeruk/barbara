@@ -1,35 +1,41 @@
 package main
 
 import (
-	"github.com/davecgh/go-spew/spew"
+	"fmt"
 	"log"
 	"os/exec"
 	"os/user"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
 
+var mainWin *gtk.Window
+
 func main() {
 	gtk.Init(nil)
 
-	win, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
+	var err error
+
+	mainWin, err = gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
 	if err != nil {
 		log.Fatal("Unable to create window:", err)
 	}
 
 	// This'll fling it to the top of the screen by default probably, at least on i3.
-	win.SetTypeHint(gdk.WINDOW_TYPE_HINT_DOCK)
-	win.SetDecorated(false)
+	mainWin.SetTypeHint(gdk.WINDOW_TYPE_HINT_DOCK)
+	mainWin.SetDecorated(false)
 
 	// Use dark theme.
 	settings, _ := gtk.SettingsGetDefault()
 	settings.SetProperty("gtk-application-prefer-dark-theme", true)
 
-	win.SetTitle("Simple Example")
-	win.Connect("destroy", func() {
+	mainWin.SetTitle("Simple Example")
+	mainWin.Connect("destroy", func() {
 		gtk.MainQuit()
 	})
 
@@ -132,20 +138,22 @@ func main() {
 	rightBox.Add(createSoundMenuButton())
 	rightBox.Add(button)
 
-	// We have one display per X session normally?
+	// We have one display per X session normally. Technically we could have more than one screen,
+	// but it's very unlikely - so unlikely that a lot of that functionality is deprecated in GTK.
 	display, _ := gdk.DisplayGetDefault()
 
-	// Monitor relates to display... how?
+	// Each display can have multiple monitors. There should be a primary monitor.
 	monitor, _ := display.GetPrimaryMonitor()
 
+	// The geometry is x and y position, and width and height.
 	monGeo := monitor.GetGeometry()
 
-	//win.SetGravity(gdk.GDK_GRAVITY_SOUTH_WEST)
-	win.Move(0, monGeo.GetHeight() - win.GetAllocation().GetHeight())
+	// So for now, don't affect x position, just move it down the full height of the screen, minus
+	// the height of the window, so it's positioned at the bottom of the primary display.
+	mainWin.Move(0, monGeo.GetHeight()-mainWin.GetAllocation().GetHeight())
 
-	win.Add(barBox)
-	win.ShowAll()
-
+	mainWin.Add(barBox)
+	mainWin.ShowAll()
 
 	gtk.Main()
 }
@@ -173,9 +181,10 @@ func createSoundMenuButton() *gtk.Button {
 	win.SetKeepAbove(true)
 	win.SetPosition(gtk.WIN_POS_NONE)
 	win.SetResizable(false)
+	win.SetSkipPagerHint(true)
 	win.SetSkipTaskbarHint(true)
 	win.SetTitle("board volume")
-	win.SetTypeHint(gdk.WINDOW_TYPE_HINT_POPUP_MENU)
+	win.SetTypeHint(gdk.WINDOW_TYPE_HINT_DROPDOWN_MENU)
 	win.Stick()
 
 	cssProvider2, _ := gtk.CssProviderNew()
@@ -210,21 +219,46 @@ func createSoundMenuButton() *gtk.Button {
 	styles2.AddProvider(cssProvider2, gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
 	win.Add(scale)
+	win.SetAcceptFocus(true)
+	win.SetCanFocus(true)
+	win.Widget.SetEvents(int(gdk.FOCUS_CHANGE_MASK))
+
+	win.Connect("focus-in-event", func() {
+		fmt.Println("GOT FOCUS")
+	})
+
+	win.Connect("focus-out-event", func() {
+		win.Hide()
+		open = false
+	})
 
 	button.Connect("clicked", func(btn *gtk.Button) {
 		if open {
 			win.Hide()
 			open = false
 		} else {
+			win.ShowAll()
+
 			btnAlloc := btn.GetAllocation()
+			btnWin, _ := btn.GetWindow()
+
+			_, wy := btnWin.GetRootOrigin()
+			_, vwh := win.GetSize()
 
 			spew.Dump(btnAlloc)
+			spew.Dump(wy, vwh)
 
-			win.ShowAll()
+			// Move over button.
 			win.Move(
-				btnAlloc.GetX() + btnAlloc.GetWidth() - 122,
-				btnAlloc.GetY() + btnAlloc.GetHeight(),
+				btnAlloc.GetX()+btnAlloc.GetWidth()-122,
+				wy+btnAlloc.GetY()-vwh,
 			)
+
+			// Move under button.
+			//win.Move(
+			//	btnAlloc.GetX()+btnAlloc.GetWidth()-122,
+			//	wy+btnAlloc.GetY()+btnAlloc.GetHeight(),
+			//)
 
 			open = true
 		}
@@ -272,6 +306,16 @@ func createUserMenuButton(menu *gtk.Menu) *gtk.Button {
 }
 
 func createUserMenu(items ...*gtk.MenuItem) *gtk.Menu {
+	scale, _ := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, 0, 1, 0.02)
+	scale.SetDrawValue(false)
+	scale.SetCanFocus(true)
+	scale.SetSensitive(true)
+
+	menuItem, _ := gtk.MenuItemNew()
+	menuItem.Add(scale)
+	menuItem.SetCanFocus(false)
+	menuItem.SetFocusChild(scale)
+
 	menu, err := gtk.MenuNew()
 	if err != nil {
 		panic(err)
@@ -280,6 +324,8 @@ func createUserMenu(items ...*gtk.MenuItem) *gtk.Menu {
 	for _, item := range items {
 		menu.Append(item)
 	}
+
+	menu.Append(menuItem)
 
 	// If this is not called, the menu will be empty.
 	menu.ShowAll()
