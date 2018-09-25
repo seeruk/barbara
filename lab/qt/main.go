@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )
 
@@ -17,10 +19,21 @@ func main() {
 			padding: 0px;
 		}
 
+		QLabel {
+			color: #e5e5e5;
+			font-family: "Fira Sans";
+			font-size: 13px;
+			padding: 0 0 0 7px;
+			text-align: center;
+		}
+
 		.board-button {
 			background: #1a1a1a;
+			background-image: none;
 			color: #e5e5e5;
-			padding: 10px;
+			font-family: "Fira Sans";
+			font-size: 13px;
+			padding: 7px;
 		}
 	`)
 
@@ -38,13 +51,16 @@ func main() {
 		fmt.Println()
 
 		lbox := widgets.NewQHBoxLayout()
+		lbox.SetAlign(core.Qt__AlignLeft)
+
 		rbox := widgets.NewQHBoxLayout()
+		rbox.SetAlign(core.Qt__AlignRight)
 
 		cbox := widgets.NewQHBoxLayout()
 		cbox.AddLayout(lbox, 1)
 		cbox.AddLayout(rbox, 1)
 
-		cbox.SetContentsMargins(0, 0, 0, 0)
+		cbox.SetContentsMargins(7, 7, 7, 7)
 
 		window := widgets.NewQMainWindow(nil, core.Qt__Drawer)
 		window.SetWindowTitle("Board Example")
@@ -55,6 +71,20 @@ func main() {
 		// Turn into dock, and move to bottom of screen.
 		window.SetAttribute(core.Qt__WA_X11NetWmWindowTypeDock, true)
 		window.Move2(geo.X(), geo.Height()-window.Height())
+
+		dateLabel := widgets.NewQLabel2(time.Now().Format("15:04:05\nMon, 02 Jan"), nil, core.Qt__Widget)
+		dateLabel.SetAlignment(core.Qt__AlignCenter)
+
+		go func() {
+			ticker := time.NewTicker(time.Second)
+
+			for {
+				select {
+				case <-ticker.C:
+					dateLabel.SetText(time.Now().Format("15:04:05\nMon, 02 Jan"))
+				}
+			}
+		}()
 
 		// Volume Label Start
 		volumeST := widgets.NewQAction2("Volume:", nil)
@@ -84,10 +114,13 @@ func main() {
 			sliderAction.QAction_PTR(),
 		})
 
-		button := widgets.NewQPushButton2("Volume", nil)
+		icon := gui.NewQIcon5("/usr/share/icons/Paper/512x512/status/audio-volume-muted.png")
+
+		button := widgets.NewQPushButton3(icon, "", nil)
 		button.SetProperty("class", core.NewQVariant14("board-button"))
-		//button.SetMenu(menu)
+		//button.SetMenu(menu) // Can't position menu if I use this.
 		button.ConnectClicked(func(checked bool) {
+			// But I can move the menu when it's clicked, based on the button position, etc.
 			mw := menu.SizeHint().Width()
 			mh := menu.SizeHint().Height()
 
@@ -99,10 +132,34 @@ func main() {
 			menu.Popup(point, nil)
 		})
 
-		window.SetMaximumHeight(button.SizeHint().Height())
-		window.SetFixedHeight(button.SizeHint().Height())
+		slider.ConnectValueChanged(func(value int) {
+			switch {
+			case value > 66:
+				icon := gui.NewQIcon5("/usr/share/icons/Paper/512x512/status/audio-volume-high.png")
+				button.SetIcon(icon)
+			case value > 33:
+				icon := gui.NewQIcon5("/usr/share/icons/Paper/512x512/status/audio-volume-medium.png")
+				button.SetIcon(icon)
+			case value > 0:
+				icon := gui.NewQIcon5("/usr/share/icons/Paper/512x512/status/audio-volume-low.png")
+				button.SetIcon(icon)
+			case value == 0:
+				icon := gui.NewQIcon5("/usr/share/icons/Paper/512x512/status/audio-volume-muted.png")
+				button.SetIcon(icon)
+			}
+		})
+
+		window.SetMaximumHeight(button.SizeHint().Height() + 14)
+		window.SetFixedHeight(button.SizeHint().Height() + 14)
 
 		rbox.AddWidget(button, 0, core.Qt__AlignRight)
+
+		userButton := widgets.NewQPushButton2("Elliot Wright", nil)
+		userButton.SetProperty("class", core.NewQVariant14("board-button"))
+
+		rbox.AddWidget(userButton, 0, core.Qt__AlignRight)
+
+		rbox.AddWidget(dateLabel, 0, core.Qt__AlignRight)
 
 		cwid := widgets.NewQWidget(nil, 0)
 		cwid.SetLayout(cbox)
