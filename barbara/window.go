@@ -1,9 +1,8 @@
-package bar
+package barbara
 
 import (
 	"log"
 
-	"github.com/seeruk/board/modules"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
@@ -20,7 +19,7 @@ type Window struct {
 	window       *widgets.QMainWindow
 
 	// The built, started modules that are currently in-use in this Window.
-	modules []modules.Module
+	modules []Module
 }
 
 // NewWindow creates a new instance of Window.
@@ -29,6 +28,7 @@ func NewWindow(screen *gui.QScreen) *Window {
 	window := widgets.NewQMainWindow(nil, core.Qt__Window)
 	window.SetWindowTitle("Barbara Bar")
 	window.SetAttribute(core.Qt__WA_X11NetWmWindowTypeDock, true) // In X11, this makes the dock.
+	// TODO(elliot): Wayland?
 
 	return &Window{
 		screen: screen,
@@ -59,12 +59,11 @@ func (w *Window) createLayout() {
 
 // updateDimensions sets the height of the window based on the window's contents.
 func (w *Window) updateDimensions() {
-	// TODO(elliot): Find largest widget that will be shown on this window, and make the bar height
-	// match that + padding:
-	//w.window.SetFixedHeight(<largest widget>.SizeHint().Height() + <padding>)
+	if w.windowLayout == nil {
+		return
+	}
 
-	// TODO(elliot): Remove me.
-	w.window.SetFixedHeight(50)
+	w.window.SetFixedHeight(w.windowLayout.SizeHint().Height())
 }
 
 // updatePosition uses the geometry of the screen that this window will be displayed on, and moves
@@ -77,39 +76,51 @@ func (w *Window) updatePosition() {
 	w.window.Move2(geo.X(), geo.Height()-w.window.Height())
 }
 
+// addModuleToLayout adds a module to the specified layout. Adding a module is complex enough that
+// given the same functionality is needed for both ends of the bar, this function was necessary.
+func (w *Window) addModuleToLayout(layout *widgets.QHBoxLayout, alignment core.Qt__AlignmentFlag, factory ModuleFactory) error {
+	align := AlignmentLeft
+	if alignment == core.Qt__AlignRight {
+		align = AlignmentRight
+	}
+
+	module := factory.Build(nil)
+	widget, err := module.Render(align, PositionBottom) // TODO(elliot): Un-hard-code.
+	if err != nil {
+		return err
+	}
+
+	// Add the widget the layout, add it to our list of modules, so we can destroy it later if
+	// we need to re-render our Window(s).
+	layout.AddWidget(widget, 0, alignment)
+
+	// Add the module to the instantiated modules list, so that they may be destroyed later.
+	w.modules = append(w.modules, module)
+
+	return nil
+}
+
 // Render resizes, repositions, and then displays the window for this bar.
-func (w *Window) Render(leftModules, rightModules []modules.ModuleFactory) {
+func (w *Window) Render(leftFactories, rightFactories []ModuleFactory) {
 	// ...
 
 	// Create the layout widgets.
 	w.createLayout()
 
-	for _, leftModule := range leftModules {
-		module := leftModule.Build(nil)
-		widget, err := module.Render()
+	for _, factory := range leftFactories {
+		err := w.addModuleToLayout(w.leftLayout, core.Qt__AlignLeft, factory)
 		if err != nil {
-			// TODO(elliot): Do something more significant here maybe?
+			// TODO(elliot): Add context.
 			log.Println(err)
 		}
-
-		// Add the widget the layout, add it to our list of modules, so we can destroy it later if
-		// we need to re-render our Window(s).
-		w.leftLayout.AddWidget(widget, 0, core.Qt__AlignLeft)
-		w.modules = append(w.modules, module)
 	}
 
-	for _, rightModule := range rightModules {
-		module := rightModule.Build(nil)
-		widget, err := module.Render()
+	for _, factory := range rightFactories {
+		err := w.addModuleToLayout(w.rightLayout, core.Qt__AlignRight, factory)
 		if err != nil {
-			// TODO(elliot): Do something more significant here maybe?
+			// TODO(elliot): Add context.
 			log.Println(err)
 		}
-
-		// Add the widget the layout, add it to our list of modules, so we can destroy it later if
-		// we need to re-render our Window(s).
-		w.rightLayout.AddWidget(widget, 0, core.Qt__AlignRight)
-		w.modules = append(w.modules, module)
 	}
 
 	// Create the layout to the window so that all UI elements attached to the layout will be
@@ -135,11 +146,13 @@ func (w *Window) Render(leftModules, rightModules []modules.ModuleFactory) {
 // Destroy stops all background processes in modules used in this bar, then destroys this window. In
 // turn, all sub-windows are also destroyed.
 func (w *Window) Destroy() {
-	// TODO(elliot): Here we need to be able to iterate over all modules that are attached to this
-	// window. This sits outside of Qt's control, so it needs to happen manually - we need to kill
-	// any background processes from modules. Most modules won't be static after all.
-
-	// NOTE(elliot): The above probably means passing around a "central" context.
+	for _, module := range w.modules {
+		err := module.Destroy()
+		if err != nil {
+			// TODO(elliot): Add context.
+			log.Println(err)
+		}
+	}
 
 	// Destroy everything, including sub-windows, and all widgets attached - freeing up resources.
 	w.window.Destroy(true, true)
