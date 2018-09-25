@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"runtime"
+	"time"
 
 	"github.com/seeruk/board/barbara"
 	"github.com/seeruk/board/modules/clock"
@@ -28,6 +31,27 @@ func main() {
 		window := barbara.NewWindow(screen)
 		window.Render(leftModules, rightModules)
 	}
+
+	go func() {
+		for {
+			var memstats runtime.MemStats
+
+			runtime.ReadMemStats(&memstats)
+
+			fmt.Println("CGo Calls:", runtime.NumCgoCall())
+			fmt.Println("Routines:", runtime.NumGoroutine())
+			fmt.Println("Heap:")
+			fmt.Println(memstats.HeapAlloc)
+			fmt.Println(memstats.HeapIdle)
+			fmt.Println(memstats.HeapInuse)
+			fmt.Println(memstats.HeapObjects)
+			fmt.Println(memstats.HeapReleased)
+			fmt.Println(memstats.HeapSys)
+			fmt.Println()
+
+			time.Sleep(10 * time.Second)
+		}
+	}()
 
 	app.Exec()
 
