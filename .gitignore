@@ -13,6 +13,8 @@
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
 
+cmd/barbara/deploy/
+cmd/barbara/linux//
 lab/menu/menu
 lab/qt/deploy/
 lab/tray/tray

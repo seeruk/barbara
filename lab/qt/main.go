@@ -28,12 +28,16 @@ func main() {
 		}
 
 		.board-button {
-			background: #1a1a1a;
-			background-image: none;
+			background-color: #1a1a1a;
 			color: #e5e5e5;
 			font-family: "Fira Sans";
 			font-size: 13px;
 			padding: 7px;
+		}
+
+		.board-button:flat {
+			border: 1px solid #333;
+			border-radius: 3px;
 		}
 	`)
 
@@ -62,10 +66,8 @@ func main() {
 
 		cbox.SetContentsMargins(7, 7, 7, 7)
 
-		window := widgets.NewQMainWindow(nil, core.Qt__Drawer)
+		window := widgets.NewQMainWindow(nil, core.Qt__Window)
 		window.SetWindowTitle("Board Example")
-		window.SetMaximumHeight(54)
-
 		window.StatusBar().Hide()
 
 		// Turn into dock, and move to bottom of screen.
@@ -117,6 +119,7 @@ func main() {
 		icon := gui.NewQIcon5("/usr/share/icons/Paper/512x512/status/audio-volume-muted.png")
 
 		button := widgets.NewQPushButton3(icon, "", nil)
+		button.SetFlat(true)
 		button.SetProperty("class", core.NewQVariant14("board-button"))
 		//button.SetMenu(menu) // Can't position menu if I use this.
 		button.ConnectClicked(func(checked bool) {
@@ -149,12 +152,12 @@ func main() {
 			}
 		})
 
-		window.SetMaximumHeight(button.SizeHint().Height() + 14)
 		window.SetFixedHeight(button.SizeHint().Height() + 14)
 
 		rbox.AddWidget(button, 0, core.Qt__AlignRight)
 
 		userButton := widgets.NewQPushButton2("Elliot Wright", nil)
+		userButton.SetFlat(true)
 		userButton.SetProperty("class", core.NewQVariant14("board-button"))
 
 		rbox.AddWidget(userButton, 0, core.Qt__AlignRight)
