@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
+	"log"
 	"os"
-	"runtime"
-	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/seeruk/board/barbara"
 	"github.com/seeruk/board/modules/clock"
 	"github.com/seeruk/board/modules/menu"
@@ -13,8 +13,18 @@ import (
 )
 
 func main() {
+	config, err := barbara.LoadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	spew.Dump(config)
+
 	app := widgets.NewQApplication(len(os.Args), os.Args)
 	app.SetStyleSheet(barbara.BuildStyleSheet())
+
+	// TODO(elliot): Use this:
+	//app.PrimaryScreen()
 
 	// Create a bar for each screen.
 	// TODO(elliot): React to screens being connected / disconnected and recreate all bars. This
@@ -24,34 +34,28 @@ func main() {
 		var leftModules []barbara.ModuleFactory
 		var rightModules []barbara.ModuleFactory
 
-		// TODO(elliot): This should definitely come from a configuration file.
-		rightModules = append(rightModules, menu.NewModuleFactory())
-		rightModules = append(rightModules, clock.NewModuleFactory())
+		// TODO(elliot): Is screen primary or not?
+		for _, raw := range config.Primary.Right {
+			var config barbara.ModuleConfig
+
+			err := json.Unmarshal(raw, &config)
+			if err != nil {
+				// TODO(elliot): Some context?
+				log.Fatal(err)
+			}
+
+			// TODO(elliot): This needs to be... better, and somewhere else. This whole block does.
+			switch config.Kind {
+			case "clock":
+				rightModules = append(rightModules, clock.NewModuleFactory())
+			case "menu":
+				rightModules = append(rightModules, menu.NewModuleFactory(raw))
+			}
+		}
 
 		window := barbara.NewWindow(screen)
 		window.Render(leftModules, rightModules)
 	}
-
-	go func() {
-		for {
-			var memstats runtime.MemStats
-
-			runtime.ReadMemStats(&memstats)
-
-			fmt.Println("CGo Calls:", runtime.NumCgoCall())
-			fmt.Println("Routines:", runtime.NumGoroutine())
-			fmt.Println("Heap:")
-			fmt.Println(memstats.HeapAlloc)
-			fmt.Println(memstats.HeapIdle)
-			fmt.Println(memstats.HeapInuse)
-			fmt.Println(memstats.HeapObjects)
-			fmt.Println(memstats.HeapReleased)
-			fmt.Println(memstats.HeapSys)
-			fmt.Println()
-
-			time.Sleep(10 * time.Second)
-		}
-	}()
 
 	app.Exec()
 

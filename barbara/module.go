@@ -1,8 +1,6 @@
 package barbara
 
 import (
-	"encoding/json"
-
 	"github.com/therecipe/qt/widgets"
 )
 
@@ -40,5 +38,5 @@ type Module interface {
 // module instance with some given configuration on-demand when a bar is being rendered.
 type ModuleFactory interface {
 	// Build returns a new Module instance using the given configuration.
-	Build(config json.RawMessage) Module
+	Build() (Module, error)
 }

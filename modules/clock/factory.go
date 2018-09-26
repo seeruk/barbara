@@ -1,8 +1,6 @@
 package clock
 
 import (
-	"encoding/json"
-
 	"github.com/seeruk/board/barbara"
 )
 
@@ -15,6 +13,6 @@ func NewModuleFactory() *ModuleFactory {
 }
 
 // Build returns a new "clock" Module instance.s
-func (f *ModuleFactory) Build(config json.RawMessage) barbara.Module {
-	return NewModule()
+func (f *ModuleFactory) Build() (barbara.Module, error) {
+	return NewModule(), nil
 }

@@ -3,13 +3,13 @@
 primary:
   # Modules are ordered left to right.
   left:
-  - type: i3
-  - type: playerctl
+  - kind: i3
+  - kind: playerctl
 
   # They're still ordered left to right on the right-side of a bar.
   right:
-  - type: volume
-  - type: menu
+  - kind: volume
+  - kind: menu
     items:
     - label: Log Off
       icon: system-log-out
@@ -20,15 +20,15 @@ primary:
     - label: Shutdown
       icon: system-shutdown
       exec: sudo systemctl poweroff
-  - type: clock
+  - kind: clock
     format: 15:04:05\nMon, 02 Jan
 
 # A new instance of the secondary bar will be displayed on all other displays. Usually you might
 # have a little less "going on" on a secondary bar, but that's up to you.
 secondary:
   left:
-  - type: i3
+  - kind: i3
 
   right:
-  - type: clock
+  - kind: clock
     format: 15:04:05\nMon, 02 Jan

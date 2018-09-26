@@ -2,6 +2,7 @@ package menu
 
 // Config holds all menu module configuration.
 type Config struct {
+	Label string       `json:"label"`
 	Items []ItemConfig `json:"items"`
 }
 

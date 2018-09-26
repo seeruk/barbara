@@ -84,7 +84,11 @@ func (w *Window) addModuleToLayout(layout *widgets.QHBoxLayout, alignment core.Q
 		align = AlignmentRight
 	}
 
-	module := factory.Build(nil)
+	module, err := factory.Build()
+	if err != nil {
+		return err
+	}
+
 	widget, err := module.Render(align, PositionBottom) // TODO(elliot): Un-hard-code.
 	if err != nil {
 		return err

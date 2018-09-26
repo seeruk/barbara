@@ -3,7 +3,6 @@ package menu
 import (
 	"log"
 	"os/exec"
-	"os/user"
 	"strings"
 
 	"github.com/seeruk/board/barbara"
@@ -46,18 +45,7 @@ func (m *Module) Render(alignment barbara.Alignment, position barbara.Position) 
 
 // createButton attempts to create a new button with the current user's name/username as it's label.
 func (m *Module) createButton() (*widgets.QPushButton, error) {
-	usr, err := user.Current()
-	if err != nil {
-		// TODO(elliot): Context.
-		return nil, err
-	}
-
-	name := usr.Name
-	if name == "" {
-		name = usr.Username
-	}
-
-	button := widgets.NewQPushButton2(name, nil)
+	button := widgets.NewQPushButton2(m.config.Label, nil)
 	button.SetFlat(true)
 	button.SetProperty("class", core.NewQVariant14("barbara-button"))
 
@@ -89,6 +77,8 @@ func (m *Module) createMenuItem(config ItemConfig) *widgets.QAction {
 
 	item := widgets.NewQAction2(config.Label, nil)
 	if config.Icon != "" {
+		// TODO(elliot): Need some kind of generic icon-getting function, so I can get icons by
+		// name, using the user's theme. Will need for tray anyway.
 		icon := gui.NewQIcon()
 		icon.SetThemeName("Paper")
 
