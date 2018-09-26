@@ -3,7 +3,11 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"net/http"
 	"os"
+	"runtime/debug"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/seeruk/board/barbara"
@@ -56,6 +60,17 @@ func main() {
 		window := barbara.NewWindow(screen)
 		window.Render(leftModules, rightModules)
 	}
+
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.Handle("/free", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			debug.FreeOSMemory()
+		}))
+
+		if err := http.ListenAndServe(":4000", nil); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	app.Exec()
 
