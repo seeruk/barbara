@@ -1,6 +1,6 @@
 # barbara
 
-Barbara is a native "bar", "dock", "panel", etc. written in [Go][1], using [Qt][2].
+Barbara is a native Linux "bar", "dock", "panel", etc. written in [Go][1], using [Qt][2].
 
 Barbara's main goal is to be an easy to use bar, providing a pleasant user experience. Barbara is
 modular, and configurable, allowing you to customise and tailor the bar to your needs. One of the 
