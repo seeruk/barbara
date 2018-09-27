@@ -1,7 +1,8 @@
 package clock
 
 import (
-	"github.com/seeruk/board/barbara"
+	"github.com/seeruk/barbara/barbara"
+	"github.com/therecipe/qt/widgets"
 )
 
 // ModuleFactory is a factory that produces new "clock" Module instances.
@@ -13,6 +14,6 @@ func NewModuleFactory() *ModuleFactory {
 }
 
 // Build returns a new "clock" Module instance.s
-func (f *ModuleFactory) Build() (barbara.Module, error) {
-	return NewModule(), nil
+func (f *ModuleFactory) Build(parent widgets.QWidget_ITF) (barbara.Module, error) {
+	return NewModule(parent), nil
 }

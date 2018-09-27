@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/seeruk/board/barbara"
+	"github.com/seeruk/barbara/barbara"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
@@ -18,12 +18,14 @@ type Module struct {
 
 	button *widgets.QPushButton
 	menu   *widgets.QMenu
+	parent widgets.QWidget_ITF
 }
 
 // NewModule returns a new Module instance.
-func NewModule(config Config) *Module {
+func NewModule(config Config, parent widgets.QWidget_ITF) *Module {
 	return &Module{
 		config: config,
+		parent: parent,
 	}
 }
 
@@ -35,7 +37,7 @@ func (m *Module) Render(alignment barbara.Alignment, position barbara.Position) 
 		return nil, err
 	}
 
-	m.menu = m.createMenu()
+	m.menu = m.createMenu(button)
 
 	m.button = button
 	m.button.ConnectClicked(m.onButtonClicked(alignment, position))
@@ -45,7 +47,7 @@ func (m *Module) Render(alignment barbara.Alignment, position barbara.Position) 
 
 // createButton attempts to create a new button with the current user's name/username as it's label.
 func (m *Module) createButton() (*widgets.QPushButton, error) {
-	button := widgets.NewQPushButton2(m.config.Label, nil)
+	button := widgets.NewQPushButton2(m.config.Label, m.parent)
 	button.SetFlat(true)
 	button.SetProperty("class", core.NewQVariant14("barbara-button"))
 
@@ -53,12 +55,12 @@ func (m *Module) createButton() (*widgets.QPushButton, error) {
 }
 
 // createMenu creates a menu with pre-configured menu items attached.
-func (m *Module) createMenu() *widgets.QMenu {
-	menu := widgets.NewQMenu(nil)
+func (m *Module) createMenu(parent widgets.QWidget_ITF) *widgets.QMenu {
+	menu := widgets.NewQMenu(parent)
 
 	var items []*widgets.QAction
 	for _, itemConfig := range m.config.Items {
-		items = append(items, m.createMenuItem(itemConfig))
+		items = append(items, m.createMenuItem(itemConfig, menu))
 	}
 
 	menu.AddActions(items)
@@ -67,22 +69,26 @@ func (m *Module) createMenu() *widgets.QMenu {
 }
 
 // createMenuItem creates a new menu item based on the given item configuration.
-func (m *Module) createMenuItem(config ItemConfig) *widgets.QAction {
+func (m *Module) createMenuItem(config ItemConfig, parent widgets.QWidget_ITF) *widgets.QAction {
 	if config.Separator {
-		item := widgets.NewQAction(nil)
+		item := widgets.NewQAction(parent)
 		item.SetSeparator(true)
 
 		return item
 	}
 
-	item := widgets.NewQAction2(config.Label, nil)
+	// NOTE(elliot): Else-if is used here to avoid having to destroy a pointlessly created action
+	// widgets, only to override it with a new one.
+	var item *widgets.QAction
 	if config.Icon != "" {
 		// TODO(elliot): Need some kind of generic icon-getting function, so I can get icons by
 		// name, using the user's theme. Will need for tray anyway.
 		icon := gui.NewQIcon()
 		icon.SetThemeName("Paper")
 
-		item = widgets.NewQAction3(icon.FromTheme(config.Icon), config.Label, nil)
+		item = widgets.NewQAction3(icon.FromTheme(config.Icon), config.Label, parent)
+	} else {
+		item = widgets.NewQAction2(config.Label, parent)
 	}
 
 	// The "triggered" handler is run when the menu item is activated (e.g. clicked).

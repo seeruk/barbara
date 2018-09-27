@@ -3,7 +3,8 @@ package menu
 import (
 	"encoding/json"
 
-	"github.com/seeruk/board/barbara"
+	"github.com/seeruk/barbara/barbara"
+	"github.com/therecipe/qt/widgets"
 )
 
 // ModuleFactory is a factory that produces new "menu" Module instances.
@@ -19,7 +20,7 @@ func NewModuleFactory(config json.RawMessage) *ModuleFactory {
 }
 
 // Build returns a new "menu" Module instance.s
-func (f *ModuleFactory) Build() (barbara.Module, error) {
+func (f *ModuleFactory) Build(parent widgets.QWidget_ITF) (barbara.Module, error) {
 	var config Config
 
 	err := json.Unmarshal(f.config, &config)
@@ -28,5 +29,5 @@ func (f *ModuleFactory) Build() (barbara.Module, error) {
 		return nil, err
 	}
 
-	return NewModule(config), nil
+	return NewModule(config, parent), nil
 }

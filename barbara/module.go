@@ -38,5 +38,5 @@ type Module interface {
 // module instance with some given configuration on-demand when a bar is being rendered.
 type ModuleFactory interface {
 	// Build returns a new Module instance using the given configuration.
-	Build() (Module, error)
+	Build(parent widgets.QWidget_ITF) (Module, error)
 }

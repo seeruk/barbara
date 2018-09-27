@@ -38,23 +38,22 @@ func NewWindow(screen *gui.QScreen) *Window {
 
 // createLayout attaches the layout widgets to this Window, providing the Qt containers that Barbara
 // modules' Qt widgets can be placed in.
-func (w *Window) createLayout() {
-	w.leftLayout = widgets.NewQHBoxLayout()
-	w.leftLayout.SetAlign(core.Qt__AlignLeft)
-
-	w.rightLayout = widgets.NewQHBoxLayout()
-	w.rightLayout.SetAlign(core.Qt__AlignRight)
-
+func (w *Window) createLayout(parent widgets.QWidget_ITF) {
 	// Create the window layout, which will act as the layout for the underlying QMainWindow's
 	// central widget's layout.
-	w.windowLayout = widgets.NewQHBoxLayout()
+	w.windowLayout = widgets.NewQHBoxLayout2(parent)
 	w.windowLayout.SetContentsMargins(7, 7, 7, 7)
+
+	w.leftLayout = widgets.NewQHBoxLayout2(w.windowLayout.Widget())
+	w.leftLayout.SetAlign(core.Qt__AlignLeft)
+
+	w.rightLayout = widgets.NewQHBoxLayout2(w.windowLayout.Widget())
+	w.rightLayout.SetAlign(core.Qt__AlignRight)
 
 	// Add the left and right layout widgets, providing them equal, but positive stretch so they
 	// meet in the middle of the window by default.
 	w.windowLayout.AddLayout(w.leftLayout, 1)
 	w.windowLayout.AddLayout(w.rightLayout, 1)
-
 }
 
 // updateDimensions sets the height of the window based on the window's contents.
@@ -84,7 +83,7 @@ func (w *Window) addModuleToLayout(layout *widgets.QHBoxLayout, alignment core.Q
 		align = AlignmentRight
 	}
 
-	module, err := factory.Build()
+	module, err := factory.Build(layout.Widget())
 	if err != nil {
 		return err
 	}
@@ -108,9 +107,17 @@ func (w *Window) addModuleToLayout(layout *widgets.QHBoxLayout, alignment core.Q
 func (w *Window) Render(leftFactories, rightFactories []ModuleFactory) {
 	// ...
 
-	// Create the layout widgets.
-	w.createLayout()
+	// Create the layout to the window so that all UI elements attached to the layout will be
+	// displayed once the window is shown.
+	centralWidget := widgets.NewQWidget(w.window, 0)
 
+	// Create the layout widgets.
+	w.createLayout(centralWidget)
+
+	// Assign the newly created layout to the central widget.
+	centralWidget.SetLayout(w.windowLayout)
+
+	// Add all of the configured Barbara modules to their corresponding layout boxes.
 	for _, factory := range leftFactories {
 		err := w.addModuleToLayout(w.leftLayout, core.Qt__AlignLeft, factory)
 		if err != nil {
@@ -126,11 +133,6 @@ func (w *Window) Render(leftFactories, rightFactories []ModuleFactory) {
 			log.Println(err)
 		}
 	}
-
-	// Create the layout to the window so that all UI elements attached to the layout will be
-	// displayed once the window is shown.
-	centralWidget := widgets.NewQWidget(nil, 0)
-	centralWidget.SetLayout(w.windowLayout)
 
 	// Attach the central widget to the window.
 	w.window.SetCentralWidget(centralWidget)

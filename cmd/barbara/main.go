@@ -7,12 +7,11 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	"github.com/davecgh/go-spew/spew"
-	"github.com/seeruk/board/barbara"
-	"github.com/seeruk/board/modules/clock"
-	"github.com/seeruk/board/modules/menu"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/seeruk/barbara/barbara"
+	"github.com/seeruk/barbara/modules/clock"
+	"github.com/seeruk/barbara/modules/menu"
 	"github.com/therecipe/qt/widgets"
 )
 
