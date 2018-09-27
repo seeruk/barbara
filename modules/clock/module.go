@@ -28,7 +28,7 @@ func NewModule(parent widgets.QWidget_ITF) *Module {
 
 // Render attempts starts a background process to update the time displayed in a label that is then
 // returned to be placed on a bar.
-func (m *Module) Render(_ barbara.Alignment, _ barbara.Position) (widgets.QWidget_ITF, error) {
+func (m *Module) Render(_ barbara.ModuleAlignment, _ barbara.WindowPosition) (widgets.QWidget_ITF, error) {
 	m.label = widgets.NewQLabel2(time.Now().Format("15:04:05\nMon, 02 Jan"), m.parent, core.Qt__Widget)
 	m.label.SetAlignment(core.Qt__AlignCenter)
 

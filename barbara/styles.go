@@ -1,8 +1,9 @@
 package barbara
 
-// BuildStyleSheet ...
+// BuildStyleSheet returns the application's stylesheet.
+// TODO(elliot): When we have an Application type, this should be a method of that type.
+// TODO(elliot): Build from config, using text/template?
 func BuildStyleSheet() string {
-	// TODO(elliot): Build from config, using text/template?
 	return `
 		QMainWindow {
 			background: #1a1a1a;

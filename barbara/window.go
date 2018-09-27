@@ -1,7 +1,10 @@
 package barbara
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
@@ -78,9 +81,9 @@ func (w *Window) updatePosition() {
 // addModuleToLayout adds a module to the specified layout. Adding a module is complex enough that
 // given the same functionality is needed for both ends of the bar, this function was necessary.
 func (w *Window) addModuleToLayout(layout *widgets.QHBoxLayout, alignment core.Qt__AlignmentFlag, factory ModuleFactory) error {
-	align := AlignmentLeft
+	align := ModuleAlignmentLeft
 	if alignment == core.Qt__AlignRight {
-		align = AlignmentRight
+		align = ModuleAlignmentRight
 	}
 
 	module, err := factory.Build(layout.Widget())
@@ -88,7 +91,7 @@ func (w *Window) addModuleToLayout(layout *widgets.QHBoxLayout, alignment core.Q
 		return err
 	}
 
-	widget, err := module.Render(align, PositionBottom) // TODO(elliot): Un-hard-code.
+	widget, err := module.Render(align, WindowPositionBottom) // TODO(elliot): Un-hard-code.
 	if err != nil {
 		return err
 	}
@@ -162,4 +165,35 @@ func (w *Window) Destroy() {
 
 	// Destroy everything, including sub-windows, and all widgets attached - freeing up resources.
 	w.window.Destroy(true, true)
+}
+
+const (
+	// WindowPositionTop is passed to modules when rendered at the top of the screen.
+	WindowPositionTop WindowPosition = iota
+	// WindowPositionBottom is passed to modules when rendered at the bottom of the screen.
+	WindowPositionBottom
+)
+
+// WindowPosition represents the possible positions of a Barbara bar on the screen.
+type WindowPosition int
+
+// UnmarshalJSON allows a JSON string to be unmarshalled into a WindowPosition.
+func (p *WindowPosition) UnmarshalJSON(raw []byte) error {
+	var str string
+
+	err := json.Unmarshal(raw, &str)
+	if err != nil {
+		return err
+	}
+
+	switch strings.ToLower(str) {
+	case "top":
+		*p = WindowPositionTop
+	case "bottom":
+		*p = WindowPositionBottom
+	default:
+		return fmt.Errorf("invalid position %q", str)
+	}
+
+	return nil
 }

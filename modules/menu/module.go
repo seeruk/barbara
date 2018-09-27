@@ -31,7 +31,7 @@ func NewModule(config Config, parent widgets.QWidget_ITF) *Module {
 
 // Render attempts to return a button widget that will open a menu containing some pre-configured
 // menu items, ready to be placed onto a bar.
-func (m *Module) Render(alignment barbara.Alignment, position barbara.Position) (widgets.QWidget_ITF, error) {
+func (m *Module) Render(alignment barbara.ModuleAlignment, position barbara.WindowPosition) (widgets.QWidget_ITF, error) {
 	button, err := m.createButton()
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (m *Module) createMenuItem(config ItemConfig, parent widgets.QWidget_ITF) *
 }
 
 // onButtonClicked is the button click handler, used to show the menu.
-func (m *Module) onButtonClicked(alignment barbara.Alignment, position barbara.Position) func(bool) {
+func (m *Module) onButtonClicked(alignment barbara.ModuleAlignment, position barbara.WindowPosition) func(bool) {
 	// Everything here needs to be handled dynamically, because the bar could move after being
 	// rendered - so we recalculate menu position every click.
 	return func(_ bool) {
@@ -106,7 +106,7 @@ func (m *Module) onButtonClicked(alignment barbara.Alignment, position barbara.P
 		msh := m.menu.SizeHint()
 
 		var x int
-		if alignment == barbara.AlignmentRight {
+		if alignment == barbara.ModuleAlignmentRight {
 			// Place on the right of the button by moving the menu right the whole width of the
 			// button, minus the menu's width, lining up the right edge of the menu with the right
 			// edge of the button.
@@ -114,7 +114,7 @@ func (m *Module) onButtonClicked(alignment barbara.Alignment, position barbara.P
 		}
 
 		var y int
-		if position == barbara.PositionBottom {
+		if position == barbara.WindowPositionBottom {
 			// Place above button, by moving the menu up the menu's height over the button.
 			y = -msh.Height()
 		} else {

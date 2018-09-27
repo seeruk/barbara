@@ -4,13 +4,13 @@ import "encoding/json"
 
 // Config holds all application configuration.
 type Config struct {
-	Primary   BarConfig `json:"primary"`
-	Secondary BarConfig `json:"secondary"`
+	Primary   WindowConfig `json:"primary"`
+	Secondary WindowConfig `json:"secondary"`
 }
 
-// BarConfig holds the configuration for a single on-screen bar.
-type BarConfig struct {
-	Position Position          `json:"position"`
+// WindowConfig holds the configuration for a single on-screen bar.
+type WindowConfig struct {
+	Position WindowPosition    `json:"position"`
 	Left     []json.RawMessage `json:"left"`
 	Right    []json.RawMessage `json:"right"`
 }
@@ -27,7 +27,7 @@ type ModuleConfig struct {
 func LoadConfig() (Config, error) {
 	in := []byte(`{
 		"primary": {
-			"position": 1,
+			"position": "bottom",
 			"right": [
 				{
 					"kind": "menu",
