@@ -56,7 +56,7 @@ func main() {
 			}
 		}
 
-		window := barbara.NewWindow(screen)
+		window := barbara.NewWindow(screen, config.Primary.Position)
 		window.Render(leftModules, rightModules)
 	}
 

@@ -15,18 +15,18 @@ import (
 // manage the state of something that a window manager will manage. Externally, the QMainWindow
 // widget will be what is used and "shown".
 type Window struct {
+	modules  []Module
+	position WindowPosition
+
+	screen       *gui.QScreen
 	leftLayout   *widgets.QHBoxLayout
 	rightLayout  *widgets.QHBoxLayout
 	windowLayout *widgets.QHBoxLayout
-	screen       *gui.QScreen
 	window       *widgets.QMainWindow
-
-	// The built, started modules that are currently in-use in this Window.
-	modules []Module
 }
 
 // NewWindow creates a new instance of Window.
-func NewWindow(screen *gui.QScreen) *Window {
+func NewWindow(screen *gui.QScreen, position WindowPosition) *Window {
 	// Construct the window with all static parameters set.
 	window := widgets.NewQMainWindow(nil, core.Qt__Window)
 	window.SetWindowTitle("Barbara Bar")
@@ -34,8 +34,9 @@ func NewWindow(screen *gui.QScreen) *Window {
 	// TODO(elliot): Wayland?
 
 	return &Window{
-		screen: screen,
-		window: window,
+		position: position,
+		screen:   screen,
+		window:   window,
 	}
 }
 
@@ -86,12 +87,22 @@ func (w *Window) addModuleToLayout(layout *widgets.QHBoxLayout, alignment core.Q
 		align = ModuleAlignmentRight
 	}
 
+	// If the module factory needs to be made aware of the alignment of the module, then set it.
+	if f, ok := factory.(AlignmentAwareModuleFactory); ok {
+		f.SetAlignment(align)
+	}
+
+	// If the module factory needs to be made aware of the Window itself, then set it.
+	if f, ok := factory.(WindowAwareModuleFactory); ok {
+		f.SetWindow(w)
+	}
+
 	module, err := factory.Build(layout.Widget())
 	if err != nil {
 		return err
 	}
 
-	widget, err := module.Render(align, WindowPositionBottom) // TODO(elliot): Un-hard-code.
+	widget, err := module.Render()
 	if err != nil {
 		return err
 	}
@@ -165,6 +176,16 @@ func (w *Window) Destroy() {
 
 	// Destroy everything, including sub-windows, and all widgets attached - freeing up resources.
 	w.window.Destroy(true, true)
+}
+
+// Position returns the position of this Window.
+func (w *Window) Position() WindowPosition {
+	return w.position
+}
+
+// Screen returns the QScreen that this Window is placed on.
+func (w *Window) Screen() *gui.QScreen {
+	return w.screen
 }
 
 const (

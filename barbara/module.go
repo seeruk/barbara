@@ -8,7 +8,7 @@ import (
 // presented on a Barbara bar.
 type Module interface {
 	// Render attempts to return a QWidget, which will be placed in one of the bar's layout boxes.
-	Render(alignment ModuleAlignment, position WindowPosition) (widgets.QWidget_ITF, error)
+	Render() (widgets.QWidget_ITF, error)
 	// Destroy frees up all resources for this module, stopping any background processes.
 	Destroy() error
 }
@@ -28,5 +28,21 @@ type ModuleAlignment int
 // module instance with some given configuration on-demand when a bar is being rendered.
 type ModuleFactory interface {
 	// Build returns a new Module instance using the given configuration.
+	// NOTE(elliot): This interface is likely to change over time as more module specific info needs
+	// to be given to modules.
 	Build(parent widgets.QWidget_ITF) (Module, error)
+}
+
+// AlignmentAwareModuleFactory extends the ModuleFactory interface to also allow setting a
+// ModuleAlignment value for position elements within the module.
+type AlignmentAwareModuleFactory interface {
+	ModuleFactory
+	SetAlignment(alignment ModuleAlignment)
+}
+
+// WindowAwareModuleFactory extends the ModuleFactory interface to also allow setting a Window value
+// for accessing things like Window position, and Window screen.
+type WindowAwareModuleFactory interface {
+	ModuleFactory
+	SetWindow(window *Window)
 }

@@ -14,7 +14,9 @@ import (
 // Module is a Barbara Module that presents a menu. Menus contain menu items that are able to be
 // clicked. You can also include separators.
 type Module struct {
-	config Config
+	config    Config
+	alignment barbara.ModuleAlignment
+	position  barbara.WindowPosition
 
 	button *widgets.QPushButton
 	menu   *widgets.QMenu
@@ -22,16 +24,18 @@ type Module struct {
 }
 
 // NewModule returns a new Module instance.
-func NewModule(config Config, parent widgets.QWidget_ITF) *Module {
+func NewModule(config Config, alignment barbara.ModuleAlignment, position barbara.WindowPosition, parent widgets.QWidget_ITF) *Module {
 	return &Module{
-		config: config,
-		parent: parent,
+		config:    config,
+		alignment: alignment,
+		position:  position,
+		parent:    parent,
 	}
 }
 
 // Render attempts to return a button widget that will open a menu containing some pre-configured
 // menu items, ready to be placed onto a bar.
-func (m *Module) Render(alignment barbara.ModuleAlignment, position barbara.WindowPosition) (widgets.QWidget_ITF, error) {
+func (m *Module) Render() (widgets.QWidget_ITF, error) {
 	button, err := m.createButton()
 	if err != nil {
 		return nil, err
@@ -40,7 +44,7 @@ func (m *Module) Render(alignment barbara.ModuleAlignment, position barbara.Wind
 	m.menu = m.createMenu(button)
 
 	m.button = button
-	m.button.ConnectClicked(m.onButtonClicked(alignment, position))
+	m.button.ConnectClicked(m.onButtonClicked())
 
 	return m.button, nil
 }
@@ -98,7 +102,7 @@ func (m *Module) createMenuItem(config ItemConfig, parent widgets.QWidget_ITF) *
 }
 
 // onButtonClicked is the button click handler, used to show the menu.
-func (m *Module) onButtonClicked(alignment barbara.ModuleAlignment, position barbara.WindowPosition) func(bool) {
+func (m *Module) onButtonClicked() func(bool) {
 	// Everything here needs to be handled dynamically, because the bar could move after being
 	// rendered - so we recalculate menu position every click.
 	return func(_ bool) {
@@ -106,7 +110,7 @@ func (m *Module) onButtonClicked(alignment barbara.ModuleAlignment, position bar
 		msh := m.menu.SizeHint()
 
 		var x int
-		if alignment == barbara.ModuleAlignmentRight {
+		if m.alignment == barbara.ModuleAlignmentRight {
 			// Place on the right of the button by moving the menu right the whole width of the
 			// button, minus the menu's width, lining up the right edge of the menu with the right
 			// edge of the button.
@@ -114,7 +118,7 @@ func (m *Module) onButtonClicked(alignment barbara.ModuleAlignment, position bar
 		}
 
 		var y int
-		if position == barbara.WindowPositionBottom {
+		if m.position == barbara.WindowPositionBottom {
 			// Place above button, by moving the menu up the menu's height over the button.
 			y = -msh.Height()
 		} else {

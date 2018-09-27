@@ -10,6 +10,9 @@ import (
 // ModuleFactory is a factory that produces new "menu" Module instances.
 type ModuleFactory struct {
 	config json.RawMessage
+
+	alignment barbara.ModuleAlignment
+	window    *barbara.Window
 }
 
 // NewModuleFactory returns a new ModuleFactory instance.
@@ -19,7 +22,17 @@ func NewModuleFactory(config json.RawMessage) *ModuleFactory {
 	}
 }
 
-// Build returns a new "menu" Module instance.s
+// SetAlignment sets alignment in this factory.
+func (f *ModuleFactory) SetAlignment(alignment barbara.ModuleAlignment) {
+	f.alignment = alignment
+}
+
+// SetWindow sets window in this factory.
+func (f *ModuleFactory) SetWindow(window *barbara.Window) {
+	f.window = window
+}
+
+// Build returns a new "menu" Module instance.
 func (f *ModuleFactory) Build(parent widgets.QWidget_ITF) (barbara.Module, error) {
 	var config Config
 
@@ -29,5 +42,5 @@ func (f *ModuleFactory) Build(parent widgets.QWidget_ITF) (barbara.Module, error
 		return nil, err
 	}
 
-	return NewModule(config, parent), nil
+	return NewModule(config, f.alignment, f.window.Position(), parent), nil
 }
