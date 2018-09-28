@@ -7,6 +7,10 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
+func init() {
+	barbara.RegisterModule("menu", NewModuleFactory)
+}
+
 // ModuleFactory is a factory that produces new "menu" Module instances.
 type ModuleFactory struct {
 	config json.RawMessage
@@ -16,7 +20,7 @@ type ModuleFactory struct {
 }
 
 // NewModuleFactory returns a new ModuleFactory instance.
-func NewModuleFactory(config json.RawMessage) *ModuleFactory {
+func NewModuleFactory(config json.RawMessage) barbara.ModuleFactory {
 	return &ModuleFactory{
 		config: config,
 	}
