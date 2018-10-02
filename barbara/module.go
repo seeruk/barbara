@@ -13,7 +13,7 @@ var (
 	// module types will end up in this map.
 	mfcs map[string]ModuleFactoryConstructor
 	// mfcsMu protects access to the mfcs map.
-	mfcsMu *sync.Mutex
+	mfcsMu = &sync.Mutex{}
 )
 
 // BuildModules takes a slice of raw JSON configuration bytes, and uses it build
