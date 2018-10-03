@@ -67,6 +67,13 @@ const (
 // ModuleAlignment represents the possible alignment of a module in the bar.
 type ModuleAlignment int
 
+// ModuleConfig is the common configuration for a Barbara module.
+type ModuleConfig struct {
+	// Kind specifies the kind of module that this configuration is for. This allows the correct
+	// ModuleFactory to be used to build the module.
+	Kind string `json:"kind"`
+}
+
 // ModuleFactory is a type that generalises the process of creating modules. A module factory can
 // be instantiated with all dependencies needed for a module to function, and then it can build a
 // module instance with some given configuration on-demand when a bar is being rendered.

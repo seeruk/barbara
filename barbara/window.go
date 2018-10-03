@@ -188,6 +188,13 @@ func (w *Window) Screen() *gui.QScreen {
 	return w.screen
 }
 
+// WindowConfig holds the configuration for a single on-screen bar.
+type WindowConfig struct {
+	Position WindowPosition    `json:"position"`
+	Left     []json.RawMessage `json:"left"`
+	Right    []json.RawMessage `json:"right"`
+}
+
 const (
 	// WindowPositionTop is passed to modules when rendered at the top of the screen.
 	WindowPositionTop WindowPosition = iota

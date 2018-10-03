@@ -6,23 +6,25 @@ import (
 	"time"
 
 	"github.com/BurntSushi/xgb"
+	"github.com/seeruk/barbara/event"
 )
 
 // RandrEventWatcher ...
 type RandrEventWatcher struct {
-	xc *xgb.Conn
+	dispatcher *event.Dispatcher
+	xc         *xgb.Conn
 }
 
 // NewRandrEventWatcher returns a new RandrEventWatcher instance.
-func NewRandrEventWatcher(xc *xgb.Conn) *RandrEventWatcher {
+func NewRandrEventWatcher(dispatcher *event.Dispatcher, xc *xgb.Conn) *RandrEventWatcher {
 	return &RandrEventWatcher{
-		xc: xc,
+		dispatcher: dispatcher,
+		xc:         xc,
 	}
 }
 
-// Start ...
-func (w *RandrEventWatcher) Start(ctx context.Context) chan struct{} {
-	eventCh := make(chan struct{}, 32)
+// Watch ...
+func (w *RandrEventWatcher) Watch(ctx context.Context) {
 	debounceCh := make(chan struct{}, 128)
 
 	go func() {
@@ -53,10 +55,9 @@ func (w *RandrEventWatcher) Start(ctx context.Context) chan struct{} {
 			case <-debounceCh:
 				timerCh = time.After(time.Second)
 			case <-timerCh:
-				eventCh <- struct{}{}
+				// Dispatch WM event.
+				w.dispatcher.Dispatch(event.TypeWM)
 			}
 		}
 	}()
-
-	return eventCh
 }
