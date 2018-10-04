@@ -74,9 +74,13 @@ func (w *Window) updateDimensions() {
 func (w *Window) updatePosition() {
 	geo := w.screen.Geometry()
 
-	// Move the window into position.
-	// TODO(elliot): Should support being at the top too.
-	w.window.Move2(geo.X(), geo.Height()-w.window.Height())
+	switch w.position {
+	case WindowPositionTop:
+		w.window.Move2(geo.X(), geo.Y())
+	default:
+		// Default is bottom.
+		w.window.Move2(geo.X(), geo.Y()+geo.Height()-w.window.Height())
+	}
 }
 
 // addModuleToLayout adds a module to the specified layout. Adding a module is complex enough that
