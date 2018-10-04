@@ -2,51 +2,10 @@ package barbara
 
 import (
 	"encoding/json"
-	"log"
 	"sync"
 
 	"github.com/therecipe/qt/widgets"
 )
-
-var (
-	// mfcs is a map from module name to it's ModuleFactory's constructor function. Registered
-	// module types will end up in this map.
-	mfcs map[string]ModuleFactoryConstructor
-	// mfcsMu protects access to the mfcs map.
-	mfcsMu = &sync.Mutex{}
-)
-
-// BuildModules takes a slice of raw JSON configuration bytes, and uses it build
-func BuildModules(config []json.RawMessage) []ModuleFactory {
-	var factories []ModuleFactory
-
-	for _, raw := range config {
-		var moduleConf ModuleConfig
-
-		err := json.Unmarshal(raw, &moduleConf)
-		if err != nil {
-			// TODO(elliot): Some context?
-			log.Fatal(err)
-		}
-
-		factories = append(factories, mfcs[moduleConf.Kind](raw))
-	}
-
-	return factories
-}
-
-// RegisterModule takes a module name, and a ModuleFactoryConstructor and registers it so that it
-// can be used to construct new Module instances to display on a bar.
-func RegisterModule(name string, mfc ModuleFactoryConstructor) {
-	mfcsMu.Lock()
-	defer mfcsMu.Unlock()
-
-	if mfcs == nil {
-		mfcs = make(map[string]ModuleFactoryConstructor)
-	}
-
-	mfcs[name] = mfc
-}
 
 // Module represents a Barbara bar module, i.e. a combination of UI and functionality that can be
 // presented on a Barbara bar.
@@ -67,36 +26,83 @@ const (
 // ModuleAlignment represents the possible alignment of a module in the bar.
 type ModuleAlignment int
 
-// ModuleConfig is the common configuration for a Barbara module.
-type ModuleConfig struct {
-	// Kind specifies the kind of module that this configuration is for. This allows the correct
-	// ModuleFactory to be used to build the module.
-	Kind string `json:"kind"`
-}
-
-// ModuleFactory is a type that generalises the process of creating modules. A module factory can
+// ModuleBuilder is a type that generalises the process of creating modules. A module factory can
 // be instantiated with all dependencies needed for a module to function, and then it can build a
 // module instance with some given configuration on-demand when a bar is being rendered.
-type ModuleFactory interface {
+type ModuleBuilder interface {
 	// Build returns a new Module instance using the given configuration.
 	// NOTE(elliot): This interface is likely to change over time as more module specific info needs
 	// to be given to modules.
 	Build(parent widgets.QWidget_ITF) (Module, error)
 }
 
-// ModuleFactoryConstructor is a function that is used to construct a new ModuleFactory instance.
-type ModuleFactoryConstructor func(raw json.RawMessage) ModuleFactory
-
-// AlignmentAwareModuleFactory extends the ModuleFactory interface to also allow setting a
+// AlignmentAwareModuleBuilder extends the ModuleBuilder interface to also allow setting a
 // ModuleAlignment value for position elements within the module.
-type AlignmentAwareModuleFactory interface {
-	ModuleFactory
+type AlignmentAwareModuleBuilder interface {
+	ModuleBuilder
 	SetAlignment(alignment ModuleAlignment)
 }
 
-// WindowAwareModuleFactory extends the ModuleFactory interface to also allow setting a Window value
+// ConfigAwareModuleBuilder extends the ModuleBuilder interface to also allow settings some raw JSON
+// formatted configuration which
+type ConfigAwareModuleBuilder interface {
+	ModuleBuilder
+	SetConfig(raw json.RawMessage)
+}
+
+// WindowAwareModuleBuilder extends the ModuleBuilder interface to also allow setting a Window value
 // for accessing things like Window position, and Window screen.
-type WindowAwareModuleFactory interface {
-	ModuleFactory
+type WindowAwareModuleBuilder interface {
+	ModuleBuilder
 	SetWindow(window *Window)
+}
+
+// ModuleConfig is the common configuration for a Barbara module.
+type ModuleConfig struct {
+	// Kind specifies the kind of module that this configuration is for. This allows the correct
+	// ModuleBuilder to be used to build the module.
+	Kind string `json:"kind"`
+}
+
+// ModuleBuilderConstructor ...
+type ModuleBuilderConstructor func() ModuleBuilder
+
+// ModuleBuilderFactory is a type that can create ModuleBuilders that are registered with in it.
+type ModuleBuilderFactory struct {
+	sync.RWMutex
+	// mbcs is a map of module name to ModuleBuilderConstructor, allowing new instances of a
+	// ModuleBuilder to be constructed.
+	mbcs map[string]ModuleBuilderConstructor
+}
+
+// ModuleBuilderFactory returns a new ModuleBuilderFactory instance.
+func NewModuleBuilderFactory() *ModuleBuilderFactory {
+	return &ModuleBuilderFactory{
+		mbcs: make(map[string]ModuleBuilderConstructor),
+	}
+}
+
+// Create attempts to use a ModuleBuilderConstructor to create a new ModuleBuilder instance, and
+// return it. If a ModuleBuilderConstructor is not registered by the given name, the second return
+// value will be false, and nil will be returned as the ModuleBuilder.
+func (f *ModuleBuilderFactory) Create(name string) (ModuleBuilder, bool) {
+	f.RLock()
+	defer f.RUnlock()
+
+	// Can't just return this, we need to make sure that we can run the ModuleBuilderConstructor.
+	mbc, ok := f.mbcs[name]
+	if !ok {
+		return nil, ok
+	}
+
+	return mbc(), ok
+}
+
+// RegisterConstructor registers the given ModuleBuilderConstructor with the given name in this
+// ModuleBuilderFactory instance, allowing it to be created by Create later.
+func (f *ModuleBuilderFactory) RegisterConstructor(name string, mbc ModuleBuilderConstructor) {
+	f.Lock()
+	defer f.Unlock()
+
+	f.mbcs[name] = mbc
 }

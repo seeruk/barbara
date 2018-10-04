@@ -7,11 +7,7 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
-func init() {
-	barbara.RegisterModule("menu", NewModuleFactory)
-}
-
-// ModuleFactory is a factory that produces new "menu" Module instances.
+// ModuleBuilder is a factory that produces new "menu" Module instances.
 type ModuleFactory struct {
 	config json.RawMessage
 
@@ -19,16 +15,19 @@ type ModuleFactory struct {
 	window    *barbara.Window
 }
 
-// NewModuleFactory returns a new ModuleFactory instance.
-func NewModuleFactory(config json.RawMessage) barbara.ModuleFactory {
-	return &ModuleFactory{
-		config: config,
-	}
+// NewModuleFactory returns a new ModuleBuilder instance.
+func NewModuleFactory() barbara.ModuleBuilder {
+	return &ModuleFactory{}
 }
 
 // SetAlignment sets alignment in this factory.
 func (f *ModuleFactory) SetAlignment(alignment barbara.ModuleAlignment) {
 	f.alignment = alignment
+}
+
+// SetConfig sets config in this factory.
+func (f *ModuleFactory) SetConfig(config json.RawMessage) {
+	f.config = config
 }
 
 // SetWindow sets window in this factory.

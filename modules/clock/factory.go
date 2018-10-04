@@ -1,25 +1,21 @@
 package clock
 
 import (
-	"encoding/json"
-
 	"github.com/seeruk/barbara/barbara"
 	"github.com/therecipe/qt/widgets"
 )
 
-func init() {
-	barbara.RegisterModule("clock", NewModuleFactory)
+// ModuleBuilder is a builder that produces new "clock" Module instances.
+type ModuleBuilder struct {
+	// TODO(elliot): Config...
 }
 
-// ModuleFactory is a factory that produces new "clock" Module instances.
-type ModuleFactory struct{}
-
-// NewModuleFactory returns a new ModuleFactory instance.
-func NewModuleFactory(_ json.RawMessage) barbara.ModuleFactory {
-	return &ModuleFactory{}
+// NewModuleBuilder returns a new ModuleBuilder instance.
+func NewModuleBuilder() barbara.ModuleBuilder {
+	return &ModuleBuilder{}
 }
 
-// Build returns a new "clock" Module instance.s
-func (f *ModuleFactory) Build(parent widgets.QWidget_ITF) (barbara.Module, error) {
+// Build returns a new "clock" Module instance.
+func (f *ModuleBuilder) Build(parent widgets.QWidget_ITF) (barbara.Module, error) {
 	return NewModule(parent), nil
 }

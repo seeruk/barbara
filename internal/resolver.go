@@ -8,10 +8,9 @@ import (
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/seeruk/barbara/barbara"
 	"github.com/seeruk/barbara/event"
+	"github.com/seeruk/barbara/modules/clock"
+	"github.com/seeruk/barbara/modules/menu"
 	"github.com/seeruk/barbara/wm/x11"
-
-	_ "github.com/seeruk/barbara/modules/clock"
-	_ "github.com/seeruk/barbara/modules/menu"
 )
 
 // Resolver is a type that resolves Barbara's runtime dependencies. It handles wiring up types in
@@ -35,7 +34,11 @@ func NewResolver(config Config) *Resolver {
 // ResolveApplication resolves the Application instance.
 func (r *Resolver) ResolveApplication() *barbara.Application {
 	if r.app == nil {
-		r.app = barbara.NewApplication(r.config.Primary, r.config.Secondary)
+		r.app = barbara.NewApplication(
+			r.ResolveModuleBuilderFactory(),
+			r.config.Primary,
+			r.config.Secondary,
+		)
 
 		// Register application events in dispatcher.
 		dispatcher := r.ResolveEventDispatcher()
@@ -54,6 +57,20 @@ func (r *Resolver) ResolveEventDispatcher() *event.Dispatcher {
 	}
 
 	return r.dispatcher
+}
+
+// ResolveModuleBuilderFactory resolves a new barbara.ModuleBuilderFactory instance, with available
+// modules already registered with it.
+func (r *Resolver) ResolveModuleBuilderFactory() *barbara.ModuleBuilderFactory {
+	// Register all available module builders, module builders might have special constructors, so
+	// this approach needs to be taken over an approach similar to sql.DB drivers. We want to be
+	// able to share instances of other services (e.g. if we need a shared API client or something
+	// similar).
+	mbf := barbara.NewModuleBuilderFactory()
+	mbf.RegisterConstructor("clock", clock.NewModuleBuilder)
+	mbf.RegisterConstructor("menu", menu.NewModuleFactory)
+
+	return mbf
 }
 
 // ResolveXConnection resolves the application's X connection, setting up extensions, etc.

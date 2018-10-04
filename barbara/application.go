@@ -1,6 +1,8 @@
 package barbara
 
 import (
+	"encoding/json"
+	"log"
 	"os"
 
 	"github.com/therecipe/qt/core"
@@ -25,17 +27,22 @@ type Application struct {
 	app     *widgets.QApplication
 	windows []*Window
 
-	primaryConfig   WindowConfig
-	secondaryConfig WindowConfig
+	moduleBuilderFactory *ModuleBuilderFactory
+	primaryConfig        WindowConfig
+	secondaryConfig      WindowConfig
 }
 
 // NewApplication returns a new instance of Application.
-func NewApplication(primaryConfig, secondaryConfig WindowConfig) *Application {
+func NewApplication(
+	moduleBuilderFactory *ModuleBuilderFactory,
+	primaryConfig, secondaryConfig WindowConfig,
+) *Application {
 	application := &Application{
 		// TODO(elliot): Not exactly testable, is it this?
-		app:             widgets.NewQApplication(len(os.Args), os.Args),
-		primaryConfig:   primaryConfig,
-		secondaryConfig: secondaryConfig,
+		app:                  widgets.NewQApplication(len(os.Args), os.Args),
+		moduleBuilderFactory: moduleBuilderFactory,
+		primaryConfig:        primaryConfig,
+		secondaryConfig:      secondaryConfig,
 	}
 
 	application.applyEventHandlers()
@@ -107,11 +114,11 @@ func (a *Application) onCreateWindowsEvent() {
 			barConfig = a.primaryConfig
 		}
 
-		leftModules := BuildModules(barConfig.Left)
-		rightModules := BuildModules(barConfig.Right)
+		leftModuleBuilders := a.prepareModuleBuilders(barConfig.Left)
+		rightModuleBuilders := a.prepareModuleBuilders(barConfig.Right)
 
 		window := NewWindow(screen, barConfig.Position)
-		window.Render(leftModules, rightModules)
+		window.Render(leftModuleBuilders, rightModuleBuilders)
 
 		a.windows = append(a.windows, window)
 	}
@@ -167,4 +174,34 @@ func (a *Application) applyStylesheet() {
 			border-radius: 3px;
 		}
 	`)
+}
+
+// prepareModuleBuilders builds modules for the given configuration.
+func (a *Application) prepareModuleBuilders(config []json.RawMessage) []ModuleBuilder {
+	var factories []ModuleBuilder
+
+	for _, raw := range config {
+		var moduleConf ModuleConfig
+
+		err := json.Unmarshal(raw, &moduleConf)
+		if err != nil {
+			// TODO(elliot): Some context?
+			log.Fatal(err)
+		}
+
+		mb, ok := a.moduleBuilderFactory.Create(moduleConf.Kind)
+		if !ok {
+			// TODO(elliot): Some context?
+			log.Fatal(err)
+		}
+
+		// If possible, set configuration in the builder.
+		if camb, ok := mb.(ConfigAwareModuleBuilder); ok {
+			camb.SetConfig(raw)
+		}
+
+		factories = append(factories, mb)
+	}
+
+	return factories
 }

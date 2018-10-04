@@ -85,23 +85,27 @@ func (w *Window) updatePosition() {
 
 // addModuleToLayout adds a module to the specified layout. Adding a module is complex enough that
 // given the same functionality is needed for both ends of the bar, this function was necessary.
-func (w *Window) addModuleToLayout(layout *widgets.QHBoxLayout, alignment core.Qt__AlignmentFlag, factory ModuleFactory) error {
+func (w *Window) addModuleToLayout(
+	layout *widgets.QHBoxLayout,
+	alignment core.Qt__AlignmentFlag,
+	builder ModuleBuilder,
+) error {
 	align := ModuleAlignmentLeft
 	if alignment == core.Qt__AlignRight {
 		align = ModuleAlignmentRight
 	}
 
-	// If the module factory needs to be made aware of the alignment of the module, then set it.
-	if f, ok := factory.(AlignmentAwareModuleFactory); ok {
+	// If the module builder needs to be made aware of the alignment of the module, then set it.
+	if f, ok := builder.(AlignmentAwareModuleBuilder); ok {
 		f.SetAlignment(align)
 	}
 
-	// If the module factory needs to be made aware of the Window itself, then set it.
-	if f, ok := factory.(WindowAwareModuleFactory); ok {
+	// If the module builder needs to be made aware of the Window itself, then set it.
+	if f, ok := builder.(WindowAwareModuleBuilder); ok {
 		f.SetWindow(w)
 	}
 
-	module, err := factory.Build(layout.Widget())
+	module, err := builder.Build(layout.Widget())
 	if err != nil {
 		return err
 	}
@@ -122,7 +126,7 @@ func (w *Window) addModuleToLayout(layout *widgets.QHBoxLayout, alignment core.Q
 }
 
 // Render resizes, repositions, and then displays the window for this bar.
-func (w *Window) Render(leftFactories, rightFactories []ModuleFactory) {
+func (w *Window) Render(leftBuilders, rightBuilders []ModuleBuilder) {
 	// ...
 
 	// Create the layout to the window so that all UI elements attached to the layout will be
@@ -136,16 +140,16 @@ func (w *Window) Render(leftFactories, rightFactories []ModuleFactory) {
 	centralWidget.SetLayout(w.windowLayout)
 
 	// Add all of the configured Barbara modules to their corresponding layout boxes.
-	for _, factory := range leftFactories {
-		err := w.addModuleToLayout(w.leftLayout, core.Qt__AlignLeft, factory)
+	for _, builder := range leftBuilders {
+		err := w.addModuleToLayout(w.leftLayout, core.Qt__AlignLeft, builder)
 		if err != nil {
 			// TODO(elliot): Add context.
 			log.Println(err)
 		}
 	}
 
-	for _, factory := range rightFactories {
-		err := w.addModuleToLayout(w.rightLayout, core.Qt__AlignRight, factory)
+	for _, builder := range rightBuilders {
+		err := w.addModuleToLayout(w.rightLayout, core.Qt__AlignRight, builder)
 		if err != nil {
 			// TODO(elliot): Add context.
 			log.Println(err)
