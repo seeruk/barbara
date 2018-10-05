@@ -64,7 +64,9 @@ type ModuleConfig struct {
 	Kind string `json:"kind"`
 }
 
-// ModuleBuilderConstructor ...
+// ModuleBuilderConstructor is a type representing the constructor function for a ModuleBuilder.
+// Some ModuleBuilderConstructor types may be curried functions, so that dependencies can be passed
+// to the built modules.
 type ModuleBuilderConstructor func() ModuleBuilder
 
 // ModuleBuilderFactory is a type that can create ModuleBuilders that are registered with in it.
