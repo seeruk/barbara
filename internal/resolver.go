@@ -63,12 +63,11 @@ func (r *Resolver) ResolveEventDispatcher() *event.Dispatcher {
 // modules already registered with it.
 func (r *Resolver) ResolveModuleBuilderFactory() *barbara.ModuleBuilderFactory {
 	// Register all available module builders, module builders might have special constructors, so
-	// this approach needs to be taken over an approach similar to sql.DB drivers. We want to be
-	// able to share instances of other services (e.g. if we need a shared API client or something
-	// similar).
+	// this approach needs to be taken over an approach similar to sql.DB drivers. Modules may have
+	// dependencies on shared services (e.g. some kind of API client, for example).
 	mbf := barbara.NewModuleBuilderFactory()
 	mbf.RegisterConstructor("clock", clock.NewModuleBuilder)
-	mbf.RegisterConstructor("menu", menu.NewModuleFactory)
+	mbf.RegisterConstructor("menu", menu.NewModuleBuilder)
 
 	return mbf
 }

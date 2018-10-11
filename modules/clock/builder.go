@@ -16,6 +16,6 @@ func NewModuleBuilder() barbara.ModuleBuilder {
 }
 
 // Build returns a new "clock" Module instance.
-func (f *ModuleBuilder) Build(parent widgets.QWidget_ITF) (barbara.Module, error) {
+func (b *ModuleBuilder) Build(parent widgets.QWidget_ITF) (barbara.Module, error) {
 	return NewModule(parent), nil
 }

@@ -26,14 +26,16 @@ const (
 // ModuleAlignment represents the possible alignment of a module in the bar.
 type ModuleAlignment int
 
-// ModuleBuilder is a type that generalises the process of creating modules. A module factory can
-// be instantiated with all dependencies needed for a module to function, and then it can build a
+// ModuleBuilder is a type that generalises the process of creating modules. A module builder can be
+// instantiated with all dependencies needed for a module to function, and then it can build a
 // module instance with some given configuration on-demand when a bar is being rendered.
 type ModuleBuilder interface {
 	// Build returns a new Module instance using the given configuration.
 	// NOTE(elliot): This interface is likely to change over time as more module specific info needs
 	// to be given to modules.
 	Build(parent widgets.QWidget_ITF) (Module, error)
+
+	// TODO(elliot): Use With* methods if we're going to stick with this approach.
 }
 
 // AlignmentAwareModuleBuilder extends the ModuleBuilder interface to also allow setting a
@@ -87,6 +89,7 @@ func NewModuleBuilderFactory() *ModuleBuilderFactory {
 // Create attempts to use a ModuleBuilderConstructor to create a new ModuleBuilder instance, and
 // return it. If a ModuleBuilderConstructor is not registered by the given name, the second return
 // value will be false, and nil will be returned as the ModuleBuilder.
+// TODO(elliot): Maybe call this NewBuilder?
 func (f *ModuleBuilderFactory) Create(name string) (ModuleBuilder, bool) {
 	f.RLock()
 	defer f.RUnlock()
