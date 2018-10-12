@@ -2,6 +2,7 @@ package clock
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/seeruk/barbara/barbara"
@@ -15,18 +16,29 @@ type Module struct {
 	ctx context.Context
 	cfn context.CancelFunc
 
-	label *widgets.QLabel
+	config Config
+	label  *widgets.QLabel
 }
 
 // NewModule returns a new Module instance.
-func NewModule(_ barbara.ModuleContext) (barbara.Module, error) {
-	return &Module{}, nil
+func NewModule(mctx barbara.ModuleContext) (barbara.Module, error) {
+	var config Config
+
+	err := json.Unmarshal(mctx.Config, &config)
+	if err != nil {
+		// TODO(elliot): More context.
+		return nil, err
+	}
+
+	return &Module{
+		config: config,
+	}, nil
 }
 
 // Render attempts starts a background process to update the time displayed in a label that is then
 // returned to be placed on a bar.
 func (m *Module) Render(parent widgets.QWidget_ITF) (widgets.QWidget_ITF, error) {
-	m.label = widgets.NewQLabel2(time.Now().Format("15:04:05\nMon, 02 Jan"), parent, core.Qt__Widget)
+	m.label = widgets.NewQLabel2(time.Now().Format(m.config.Format), parent, core.Qt__Widget)
 	m.label.SetAlignment(core.Qt__AlignCenter)
 
 	m.ctx, m.cfn = context.WithCancel(context.Background())
@@ -40,7 +52,7 @@ func (m *Module) Render(parent widgets.QWidget_ITF) (widgets.QWidget_ITF, error)
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				m.label.SetText(time.Now().Format("15:04:05\nMon, 02 Jan"))
+				m.label.SetText(time.Now().Format(m.config.Format))
 			}
 		}
 	}()
