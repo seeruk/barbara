@@ -124,7 +124,7 @@ func (a *Application) onCreateWindowsEvent() {
 	}
 }
 
-// createWindow ...
+// createWindow creates a single bar window, starting it's modules, and rendering the window.
 func (a *Application) createWindow(primaryScreen, screen *gui.QScreen) *Window {
 	config := a.secondaryConfig
 	if primaryScreen != nil && screen.Name() == primaryScreen.Name() {
@@ -141,7 +141,7 @@ func (a *Application) createWindow(primaryScreen, screen *gui.QScreen) *Window {
 	return window
 }
 
-// createModules ...
+// createModules creates a slice of modules ready to be placed on part of a Barbara bar.
 func (a *Application) createModules(alignment ModuleAlignment, rawConfigs []json.RawMessage, window *Window) []Module {
 	modules := make([]Module, 0, len(rawConfigs))
 

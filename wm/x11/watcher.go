@@ -9,7 +9,8 @@ import (
 	"github.com/seeruk/barbara/event"
 )
 
-// RandrEventWatcher ...
+// RandrEventWatcher watches for randr events in X, allowing other parts of the application to react
+// to randr events (e.g. for re-rendering bars).
 type RandrEventWatcher struct {
 	dispatcher *event.Dispatcher
 	xc         *xgb.Conn
@@ -23,7 +24,8 @@ func NewRandrEventWatcher(dispatcher *event.Dispatcher, xc *xgb.Conn) *RandrEven
 	}
 }
 
-// Watch ...
+// Watch starts watching for randr events from the X server. It will debounce events, waiting for 1
+// second of no event activity before sending a WM event in the event dispatcher.
 func (w *RandrEventWatcher) Watch(ctx context.Context) {
 	debounceCh := make(chan struct{}, 128)
 
