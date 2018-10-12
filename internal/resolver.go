@@ -43,7 +43,7 @@ func (r *Resolver) ResolveApplication() *barbara.Application {
 		// Register application events in dispatcher.
 		dispatcher := r.ResolveEventDispatcher()
 		dispatcher.RegisterListener(event.TypeStartup, r.app.CreateWindows)
-		dispatcher.RegisterListener(event.TypeShutdown, r.app.DestroyWindows)
+		dispatcher.RegisterListener(event.TypeShutdown, r.app.Exit)
 		dispatcher.RegisterListener(event.TypeWM, r.app.RecreateWindows)
 	}
 

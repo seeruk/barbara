@@ -19,6 +19,8 @@ var (
 	// eventRecreateWindows is the event used to trigger a full UI re-render, effectively restarting
 	// Barbara in-place. This will also restart modules.
 	eventRecreateWindows = core.QEvent__Type(2002)
+	// eventExit is used to signal to the QApplication event loop that it should exit.
+	eventExit = core.QEvent__Type(2003)
 )
 
 // Application is a type that sets up the Barbara QApplication, connecting event handlers, and
@@ -71,6 +73,13 @@ func (a *Application) RecreateWindows() {
 	a.postEvent(eventRecreateWindows)
 }
 
+// Exit provides a thread-safe mechanism for signalling for the QApplication to exit gracefully. It
+// also destroys all windows, stopping all modules.
+func (a *Application) Exit() {
+	a.DestroyWindows()
+	a.postEvent(eventExit)
+}
+
 // postEvent provides an easier way to send an event to the underlying QApplication.
 func (a *Application) postEvent(eventType core.QEvent__Type) {
 	a.app.PostEvent(a.app, core.NewQEvent(eventType), 0)
@@ -93,6 +102,8 @@ func (a *Application) applyEventHandlers() {
 			a.onDestroyWindowsEvent()
 		case eventRecreateWindows:
 			a.onRecreateWindowsEvent()
+		case eventExit:
+			a.onExit()
 		}
 
 		return true
@@ -180,6 +191,12 @@ func (a *Application) onRecreateWindowsEvent() {
 
 	// Send event to create new windows.
 	a.app.PostEvent(a.app, core.NewQEvent(eventCreateWindows), 0)
+}
+
+// onExit is an internal event handler run via Qt when a Qt user event with the type defined in
+// eventQuit is received.
+func (a *Application) onExit() {
+	a.app.Exit(0)
 }
 
 // applyStylesheet applies the global stylesheet for the application.
