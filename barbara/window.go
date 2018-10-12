@@ -15,8 +15,8 @@ import (
 // manage the state of something that a window manager will manage. Externally, the QMainWindow
 // widget will be what is used and "shown".
 type Window struct {
-	modules  []Module
-	position WindowPosition
+	config  WindowConfig
+	modules []Module
 
 	screen       *gui.QScreen
 	leftLayout   *widgets.QHBoxLayout
@@ -26,7 +26,7 @@ type Window struct {
 }
 
 // NewWindow creates a new instance of Window.
-func NewWindow(screen *gui.QScreen, position WindowPosition) *Window {
+func NewWindow(config WindowConfig, screen *gui.QScreen) *Window {
 	// Construct the window with all static parameters set.
 	window := widgets.NewQMainWindow(nil, core.Qt__Window)
 	window.SetWindowTitle("Barbara Bar")
@@ -34,9 +34,9 @@ func NewWindow(screen *gui.QScreen, position WindowPosition) *Window {
 	// TODO(elliot): Wayland?
 
 	return &Window{
-		position: position,
-		screen:   screen,
-		window:   window,
+		config: config,
+		screen: screen,
+		window: window,
 	}
 }
 
@@ -74,7 +74,7 @@ func (w *Window) updateDimensions() {
 func (w *Window) updatePosition() {
 	geo := w.screen.Geometry()
 
-	switch w.position {
+	switch w.config.Position {
 	case WindowPositionTop:
 		w.window.Move2(geo.X(), geo.Y())
 	default:
@@ -88,29 +88,9 @@ func (w *Window) updatePosition() {
 func (w *Window) addModuleToLayout(
 	layout *widgets.QHBoxLayout,
 	alignment core.Qt__AlignmentFlag,
-	builder ModuleBuilder,
+	module Module,
 ) error {
-	align := ModuleAlignmentLeft
-	if alignment == core.Qt__AlignRight {
-		align = ModuleAlignmentRight
-	}
-
-	// If the module builder needs to be made aware of the alignment of the module, then set it.
-	if f, ok := builder.(AlignmentAwareModuleBuilder); ok {
-		f.SetAlignment(align)
-	}
-
-	// If the module builder needs to be made aware of the Window itself, then set it.
-	if f, ok := builder.(WindowAwareModuleBuilder); ok {
-		f.SetWindow(w)
-	}
-
-	module, err := builder.Build(layout.Widget())
-	if err != nil {
-		return err
-	}
-
-	widget, err := module.Render()
+	widget, err := module.Render(layout.Widget())
 	if err != nil {
 		return err
 	}
@@ -126,9 +106,7 @@ func (w *Window) addModuleToLayout(
 }
 
 // Render resizes, repositions, and then displays the window for this bar.
-func (w *Window) Render(leftBuilders, rightBuilders []ModuleBuilder) {
-	// ...
-
+func (w *Window) Render(leftModules, rightModules []Module) {
 	// Create the layout to the window so that all UI elements attached to the layout will be
 	// displayed once the window is shown.
 	centralWidget := widgets.NewQWidget(w.window, 0)
@@ -140,16 +118,16 @@ func (w *Window) Render(leftBuilders, rightBuilders []ModuleBuilder) {
 	centralWidget.SetLayout(w.windowLayout)
 
 	// Add all of the configured Barbara modules to their corresponding layout boxes.
-	for _, builder := range leftBuilders {
-		err := w.addModuleToLayout(w.leftLayout, core.Qt__AlignLeft, builder)
+	for _, module := range leftModules {
+		err := w.addModuleToLayout(w.leftLayout, core.Qt__AlignLeft, module)
 		if err != nil {
 			// TODO(elliot): Add context.
 			log.Println(err)
 		}
 	}
 
-	for _, builder := range rightBuilders {
-		err := w.addModuleToLayout(w.rightLayout, core.Qt__AlignRight, builder)
+	for _, module := range rightModules {
+		err := w.addModuleToLayout(w.rightLayout, core.Qt__AlignRight, module)
 		if err != nil {
 			// TODO(elliot): Add context.
 			log.Println(err)
@@ -188,7 +166,7 @@ func (w *Window) Destroy() {
 
 // Position returns the position of this Window.
 func (w *Window) Position() WindowPosition {
-	return w.position
+	return w.config.Position
 }
 
 // Screen returns the QScreen that this Window is placed on.

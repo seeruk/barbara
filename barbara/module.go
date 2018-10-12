@@ -2,7 +2,6 @@ package barbara
 
 import (
 	"encoding/json"
-	"sync"
 
 	"github.com/therecipe/qt/widgets"
 )
@@ -11,7 +10,7 @@ import (
 // presented on a Barbara bar.
 type Module interface {
 	// Render attempts to return a QWidget, which will be placed in one of the bar's layout boxes.
-	Render() (widgets.QWidget_ITF, error)
+	Render(parent widgets.QWidget_ITF) (widgets.QWidget_ITF, error)
 	// Destroy frees up all resources for this module, stopping any background processes.
 	Destroy() error
 }
@@ -26,88 +25,59 @@ const (
 // ModuleAlignment represents the possible alignment of a module in the bar.
 type ModuleAlignment int
 
-// ModuleBuilder is a type that generalises the process of creating modules. A module builder can be
-// instantiated with all dependencies needed for a module to function, and then it can build a
-// module instance with some given configuration on-demand when a bar is being rendered.
-type ModuleBuilder interface {
-	// Build returns a new Module instance using the given configuration.
-	// NOTE(elliot): This interface is likely to change over time as more module specific info needs
-	// to be given to modules.
-	Build(parent widgets.QWidget_ITF) (Module, error)
-
-	// TODO(elliot): Use With* methods if we're going to stick with this approach.
-}
-
-// AlignmentAwareModuleBuilder extends the ModuleBuilder interface to also allow setting a
-// ModuleAlignment value for position elements within the module.
-type AlignmentAwareModuleBuilder interface {
-	ModuleBuilder
-	SetAlignment(alignment ModuleAlignment)
-}
-
-// ConfigAwareModuleBuilder extends the ModuleBuilder interface to also allow settings some raw JSON
-// formatted configuration which
-type ConfigAwareModuleBuilder interface {
-	ModuleBuilder
-	SetConfig(raw json.RawMessage)
-}
-
-// WindowAwareModuleBuilder extends the ModuleBuilder interface to also allow setting a Window value
-// for accessing things like Window position, and Window screen.
-type WindowAwareModuleBuilder interface {
-	ModuleBuilder
-	SetWindow(window *Window)
-}
-
 // ModuleConfig is the common configuration for a Barbara module.
 type ModuleConfig struct {
-	// Kind specifies the kind of module that this configuration is for. This allows the correct
-	// ModuleBuilder to be used to build the module.
+	// Kind specifies the kind of module that this configuration is for, allowing the correct Module
+	// to be constructed based on the kind.
 	Kind string `json:"kind"`
 }
 
-// ModuleBuilderConstructor is a type representing the constructor function for a ModuleBuilder.
-// Some ModuleBuilderConstructor types may be curried functions, so that dependencies can be passed
-// to the built modules.
-type ModuleBuilderConstructor func() ModuleBuilder
+// ModuleConstructorFunc is a function used to construct new Module instances.
+type ModuleConstructorFunc func(mctx ModuleContext) (Module, error)
 
-// ModuleBuilderFactory is a type that can create ModuleBuilders that are registered with in it.
-type ModuleBuilderFactory struct {
-	sync.RWMutex
-	// mbcs is a map of module name to ModuleBuilderConstructor, allowing new instances of a
-	// ModuleBuilder to be constructed.
-	mbcs map[string]ModuleBuilderConstructor
+// ModuleContext is used to inform a module about it's environment on the bar, e.g. it's alignment,
+// the position of the bar itself, and the Module's configuration.
+type ModuleContext struct {
+	// Alignment is the intended alignment of the Module on a Barbara bar (i.e. left, right).
+	Alignment ModuleAlignment
+	// Config is the raw configuration bytes. The Module will have to decode it's configuration.
+	Config json.RawMessage
+	// Window is the Barbara bar's window representation, allowing the module to get info about the
+	// window itself, such as it's position on the screen it's on.
+	Window *Window
 }
 
-// ModuleBuilderFactory returns a new ModuleBuilderFactory instance.
-func NewModuleBuilderFactory() *ModuleBuilderFactory {
-	return &ModuleBuilderFactory{
-		mbcs: make(map[string]ModuleBuilderConstructor),
+// ModuleFactory is a type that ModuleConstructorFunc functions can be registered in to create new
+// instances of modules on-demand.
+type ModuleFactory struct {
+	mcfs map[string]ModuleConstructorFunc
+}
+
+// NewModuleFactory constructs a new ModuleFactory instance.
+func NewModuleFactory() *ModuleFactory {
+	return &ModuleFactory{
+		mcfs: make(map[string]ModuleConstructorFunc),
 	}
 }
 
-// Create attempts to use a ModuleBuilderConstructor to create a new ModuleBuilder instance, and
-// return it. If a ModuleBuilderConstructor is not registered by the given name, the second return
-// value will be false, and nil will be returned as the ModuleBuilder.
-// TODO(elliot): Maybe call this NewBuilder?
-func (f *ModuleBuilderFactory) Create(name string) (ModuleBuilder, bool) {
-	f.RLock()
-	defer f.RUnlock()
+// Create attempts to created a new instance of a Module. The Module must be registered first. If an
+// unknown Module is requested, (nil, false) will be returned.
+func (f *ModuleFactory) Create(name string, mctx ModuleContext) (Module, bool) {
+	if mcf, ok := f.mcfs[name]; ok {
+		module, err := mcf(mctx)
+		if err != nil {
+			// TODO(elliot): Do something?
+			return nil, false
+		}
 
-	// Can't just return this, we need to make sure that we can run the ModuleBuilderConstructor.
-	mbc, ok := f.mbcs[name]
-	if !ok {
-		return nil, ok
+		return module, true
 	}
 
-	return mbc(), ok
+	return nil, false
 }
 
-// RegisterConstructor registers the given ModuleBuilderConstructor with the given name in this
-// ModuleBuilderFactory instance, allowing it to be created by Create later.
-func (f *ModuleBuilderFactory) RegisterConstructor(name string, mbc ModuleBuilderConstructor) {
-	f.Lock()
-	defer f.Unlock()
-
-	f.mbcs[name] = mbc
+// RegisterConstructor registers the given ModuleConstructorFunc with the given name in this
+// ModuleFactory instance, allowing a new Module instance to be created later.
+func (f *ModuleFactory) RegisterConstructor(name string, mcf ModuleConstructorFunc) {
+	f.mcfs[name] = mcf
 }

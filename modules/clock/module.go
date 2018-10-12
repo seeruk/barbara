@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/seeruk/barbara/barbara"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
 )
@@ -14,21 +15,18 @@ type Module struct {
 	ctx context.Context
 	cfn context.CancelFunc
 
-	label  *widgets.QLabel
-	parent widgets.QWidget_ITF
+	label *widgets.QLabel
 }
 
 // NewModule returns a new Module instance.
-func NewModule(parent widgets.QWidget_ITF) *Module {
-	return &Module{
-		parent: parent,
-	}
+func NewModule(_ barbara.ModuleContext) (barbara.Module, error) {
+	return &Module{}, nil
 }
 
 // Render attempts starts a background process to update the time displayed in a label that is then
 // returned to be placed on a bar.
-func (m *Module) Render() (widgets.QWidget_ITF, error) {
-	m.label = widgets.NewQLabel2(time.Now().Format("15:04:05\nMon, 02 Jan"), m.parent, core.Qt__Widget)
+func (m *Module) Render(parent widgets.QWidget_ITF) (widgets.QWidget_ITF, error) {
+	m.label = widgets.NewQLabel2(time.Now().Format("15:04:05\nMon, 02 Jan"), parent, core.Qt__Widget)
 	m.label.SetAlignment(core.Qt__AlignCenter)
 
 	m.ctx, m.cfn = context.WithCancel(context.Background())

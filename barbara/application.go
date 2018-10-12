@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )
 
@@ -27,22 +28,22 @@ type Application struct {
 	app     *widgets.QApplication
 	windows []*Window
 
-	moduleBuilderFactory *ModuleBuilderFactory
-	primaryConfig        WindowConfig
-	secondaryConfig      WindowConfig
+	moduleFactory   *ModuleFactory
+	primaryConfig   WindowConfig
+	secondaryConfig WindowConfig
 }
 
 // NewApplication returns a new instance of Application.
 func NewApplication(
-	moduleBuilderFactory *ModuleBuilderFactory,
+	moduleFactory *ModuleFactory,
 	primaryConfig, secondaryConfig WindowConfig,
 ) *Application {
 	application := &Application{
 		// TODO(elliot): Not exactly testable, is it this?
-		app:                  widgets.NewQApplication(len(os.Args), os.Args),
-		moduleBuilderFactory: moduleBuilderFactory,
-		primaryConfig:        primaryConfig,
-		secondaryConfig:      secondaryConfig,
+		app:             widgets.NewQApplication(len(os.Args), os.Args),
+		moduleFactory:   moduleFactory,
+		primaryConfig:   primaryConfig,
+		secondaryConfig: secondaryConfig,
 	}
 
 	application.applyEventHandlers()
@@ -101,27 +102,65 @@ func (a *Application) applyEventHandlers() {
 // onCreateWindowsEvent is an internal event handler run via Qt when a Qt user event with the type
 // defined in eventCreateWindows is received.
 func (a *Application) onCreateWindowsEvent() {
-	a.windows = make([]*Window, 0, 0) // Reset
-
-	// Get primary screen so we know which bar config to load.
+	// Get primary screen so we know which bar config to load, and all screens to iterate over.
 	primaryScreen := a.app.PrimaryScreen()
+	screens := a.app.Screens()
 
 	// Create a bar for each screen.
-	screens := a.app.Screens()
+	a.windows = make([]*Window, 0, len(screens)) // Reset
 	for _, screen := range screens {
-		barConfig := a.secondaryConfig
-		if primaryScreen != nil && screen.Name() == primaryScreen.Name() {
-			barConfig = a.primaryConfig
+		a.windows = append(a.windows, a.createWindow(primaryScreen, screen))
+	}
+}
+
+// createWindow ...
+func (a *Application) createWindow(primaryScreen, screen *gui.QScreen) *Window {
+	config := a.secondaryConfig
+	if primaryScreen != nil && screen.Name() == primaryScreen.Name() {
+		config = a.primaryConfig
+	}
+
+	window := NewWindow(config, screen)
+
+	leftModules := a.createModules(ModuleAlignmentLeft, config.Left, window)
+	rightModules := a.createModules(ModuleAlignmentRight, config.Right, window)
+
+	window.Render(leftModules, rightModules)
+
+	return window
+}
+
+// createModules ...
+func (a *Application) createModules(alignment ModuleAlignment, rawConfigs []json.RawMessage, window *Window) []Module {
+	modules := make([]Module, 0, len(rawConfigs))
+
+	for _, rawConfig := range rawConfigs {
+		var moduleConfig ModuleConfig
+
+		// First, determine the Module kind.
+		err := json.Unmarshal(rawConfig, &moduleConfig)
+		if err != nil {
+			// TODO(elliot): Better logging.
+			log.Println("failed to unmarshal module configuration")
+			continue
 		}
 
-		leftModuleBuilders := a.prepareModuleBuilders(barConfig.Left)
-		rightModuleBuilders := a.prepareModuleBuilders(barConfig.Right)
+		mctx := ModuleContext{
+			Alignment: alignment,
+			Config:    rawConfig,
+			Window:    window,
+		}
 
-		window := NewWindow(screen, barConfig.Position)
-		window.Render(leftModuleBuilders, rightModuleBuilders)
+		module, ok := a.moduleFactory.Create(moduleConfig.Kind, mctx)
+		if !ok {
+			log.Printf("failed to create module with kind %q", moduleConfig.Kind)
+			continue
+		}
 
-		a.windows = append(a.windows, window)
+		modules = append(modules, module)
 	}
+
+	return modules
 }
 
 // onDestroyWindowsEvent is an internal event handler run via Qt when a Qt user event with the type
@@ -174,34 +213,4 @@ func (a *Application) applyStylesheet() {
 			border-radius: 3px;
 		}
 	`)
-}
-
-// prepareModuleBuilders builds modules for the given configuration.
-func (a *Application) prepareModuleBuilders(config []json.RawMessage) []ModuleBuilder {
-	var factories []ModuleBuilder
-
-	for _, raw := range config {
-		var moduleConf ModuleConfig
-
-		err := json.Unmarshal(raw, &moduleConf)
-		if err != nil {
-			// TODO(elliot): Some context?
-			log.Fatal(err)
-		}
-
-		mb, ok := a.moduleBuilderFactory.Create(moduleConf.Kind)
-		if !ok {
-			// TODO(elliot): Some context?
-			log.Fatal(err)
-		}
-
-		// If possible, set configuration in the builder.
-		if camb, ok := mb.(ConfigAwareModuleBuilder); ok {
-			camb.SetConfig(raw)
-		}
-
-		factories = append(factories, mb)
-	}
-
-	return factories
 }

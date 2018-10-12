@@ -35,7 +35,7 @@ func NewResolver(config Config) *Resolver {
 func (r *Resolver) ResolveApplication() *barbara.Application {
 	if r.app == nil {
 		r.app = barbara.NewApplication(
-			r.ResolveModuleBuilderFactory(),
+			r.ResolveModuleFactory(),
 			r.config.Primary,
 			r.config.Secondary,
 		)
@@ -59,15 +59,15 @@ func (r *Resolver) ResolveEventDispatcher() *event.Dispatcher {
 	return r.dispatcher
 }
 
-// ResolveModuleBuilderFactory resolves a new barbara.ModuleBuilderFactory instance, with available
-// modules already registered with it.
-func (r *Resolver) ResolveModuleBuilderFactory() *barbara.ModuleBuilderFactory {
-	// Register all available module builders, module builders might have special constructors, so
-	// this approach needs to be taken over an approach similar to sql.DB drivers. Modules may have
-	// dependencies on shared services (e.g. some kind of API client, for example).
-	mbf := barbara.NewModuleBuilderFactory()
-	mbf.RegisterConstructor("clock", clock.NewModuleBuilder)
-	mbf.RegisterConstructor("menu", menu.NewModuleBuilder)
+// ResolveModuleFactory resolves a new barbara.ModuleFactory instance, with available modules
+// already registered with it.
+func (r *Resolver) ResolveModuleFactory() *barbara.ModuleFactory {
+	// Register all available modules, modules might have special constructors, so this approach
+	// needs to be taken over an approach similar to sql.DB drivers. Modules may have dependencies
+	// on shared services (e.g. some kind of API client, for example).
+	mbf := barbara.NewModuleFactory()
+	mbf.RegisterConstructor("clock", clock.NewModule)
+	mbf.RegisterConstructor("menu", menu.NewModule)
 
 	return mbf
 }

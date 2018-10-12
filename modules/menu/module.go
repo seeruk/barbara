@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"encoding/json"
 	"log"
 	"os/exec"
 	"strings"
@@ -20,23 +21,29 @@ type Module struct {
 
 	button *widgets.QPushButton
 	menu   *widgets.QMenu
-	parent widgets.QWidget_ITF
 }
 
 // NewModule returns a new Module instance.
-func NewModule(config Config, alignment barbara.ModuleAlignment, position barbara.WindowPosition, parent widgets.QWidget_ITF) *Module {
+func NewModule(mctx barbara.ModuleContext) (barbara.Module, error) {
+	var config Config
+
+	err := json.Unmarshal(mctx.Config, &config)
+	if err != nil {
+		// TODO(elliot): Context.
+		return nil, err
+	}
+
 	return &Module{
 		config:    config,
-		alignment: alignment,
-		position:  position,
-		parent:    parent,
-	}
+		alignment: mctx.Alignment,
+		position:  mctx.Window.Position(),
+	}, nil
 }
 
 // Render attempts to return a button widget that will open a menu containing some pre-configured
 // menu items, ready to be placed onto a bar.
-func (m *Module) Render() (widgets.QWidget_ITF, error) {
-	button, err := m.createButton()
+func (m *Module) Render(parent widgets.QWidget_ITF) (widgets.QWidget_ITF, error) {
+	button, err := m.createButton(parent)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +57,8 @@ func (m *Module) Render() (widgets.QWidget_ITF, error) {
 }
 
 // createButton attempts to create a new button with the current user's name/username as it's label.
-func (m *Module) createButton() (*widgets.QPushButton, error) {
-	button := widgets.NewQPushButton2(m.config.Label, m.parent)
+func (m *Module) createButton(parent widgets.QWidget_ITF) (*widgets.QPushButton, error) {
+	button := widgets.NewQPushButton2(m.config.Label, parent)
 	button.SetFlat(true)
 	button.SetProperty("class", core.NewQVariant14("barbara-button"))
 
