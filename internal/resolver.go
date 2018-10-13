@@ -8,6 +8,7 @@ import (
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/seeruk/barbara/barbara"
 	"github.com/seeruk/barbara/event"
+	"github.com/seeruk/barbara/modules/battery"
 	"github.com/seeruk/barbara/modules/clock"
 	"github.com/seeruk/barbara/modules/menu"
 	"github.com/seeruk/barbara/wm/x11"
@@ -66,6 +67,7 @@ func (r *Resolver) ResolveModuleFactory() *barbara.ModuleFactory {
 	// needs to be taken over an approach similar to sql.DB drivers. Modules may have dependencies
 	// on shared services (e.g. some kind of API client, for example).
 	mbf := barbara.NewModuleFactory()
+	mbf.RegisterConstructor("battery", battery.NewModule)
 	mbf.RegisterConstructor("clock", clock.NewModule)
 	mbf.RegisterConstructor("menu", menu.NewModule)
 

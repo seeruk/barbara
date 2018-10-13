@@ -19,6 +19,7 @@ type Module struct {
 	alignment barbara.ModuleAlignment
 	position  barbara.WindowPosition
 
+	layout *widgets.QHBoxLayout
 	button *widgets.QPushButton
 	menu   *widgets.QMenu
 }
@@ -42,8 +43,10 @@ func NewModule(mctx barbara.ModuleContext) (barbara.Module, error) {
 
 // Render attempts to return a button widget that will open a menu containing some pre-configured
 // menu items, ready to be placed onto a bar.
-func (m *Module) Render(parent widgets.QWidget_ITF) (widgets.QWidget_ITF, error) {
-	button, err := m.createButton(parent)
+func (m *Module) Render() (widgets.QLayout_ITF, error) {
+	m.layout = widgets.NewQHBoxLayout()
+
+	button, err := m.createButton()
 	if err != nil {
 		return nil, err
 	}
@@ -53,12 +56,14 @@ func (m *Module) Render(parent widgets.QWidget_ITF) (widgets.QWidget_ITF, error)
 	m.button = button
 	m.button.ConnectClicked(m.onButtonClicked())
 
-	return m.button, nil
+	m.layout.AddWidget(m.button, 0, core.Qt__AlignJustify)
+
+	return m.layout, nil
 }
 
 // createButton attempts to create a new button with the current user's name/username as it's label.
-func (m *Module) createButton(parent widgets.QWidget_ITF) (*widgets.QPushButton, error) {
-	button := widgets.NewQPushButton2(m.config.Label, parent)
+func (m *Module) createButton() (*widgets.QPushButton, error) {
+	button := widgets.NewQPushButton2(m.config.Label, nil)
 	button.SetFlat(true)
 	button.SetProperty("class", core.NewQVariant14("barbara-button"))
 

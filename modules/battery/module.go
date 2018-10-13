@@ -1,17 +1,16 @@
-package clock
+package battery
 
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/seeruk/barbara/barbara"
 	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )
 
-// Module is a Barbara Module that presents a clock. It uses Go's time formatting, and is basically
-// just a label that gets updated every second.
+// Module ...
 type Module struct {
 	ctx context.Context
 	cfn context.CancelFunc
@@ -19,9 +18,10 @@ type Module struct {
 	config Config
 	layout *widgets.QHBoxLayout
 	label  *widgets.QLabel
+	icon   *gui.QIcon
 }
 
-// NewModule returns a new clock Module instance.
+// NewModule returns a new battery Module instance.
 func NewModule(mctx barbara.ModuleContext) (barbara.Module, error) {
 	var config Config
 
@@ -36,36 +36,18 @@ func NewModule(mctx barbara.ModuleContext) (barbara.Module, error) {
 	}, nil
 }
 
-// Render attempts starts a background process to update the time displayed in a label that is then
-// returned to be placed on a bar.
+// Render ...
 func (m *Module) Render() (widgets.QLayout_ITF, error) {
 	m.layout = widgets.NewQHBoxLayout()
-
-	m.label = widgets.NewQLabel2(time.Now().Format(m.config.Format), nil, core.Qt__Widget)
-	m.label.SetAlignment(core.Qt__AlignCenter)
-
-	m.ctx, m.cfn = context.WithCancel(context.Background())
-
-	go func() {
-		ticker := time.NewTicker(time.Second)
-
-		for {
-			select {
-			case <-m.ctx.Done():
-				ticker.Stop()
-				return
-			case <-ticker.C:
-				m.label.SetText(time.Now().Format(m.config.Format))
-			}
-		}
-	}()
+	m.label = widgets.NewQLabel(m.layout.Widget(), core.Qt__Widget)
+	m.label.SetText("BAT0")
 
 	m.layout.AddWidget(m.label, 0, core.Qt__AlignJustify)
 
 	return m.layout, nil
 }
 
-// Destroy stops background processes and frees up resources.
+// Destroy ...
 func (m *Module) Destroy() error {
 	if m.cfn != nil {
 		m.cfn()
@@ -79,10 +61,15 @@ func (m *Module) Destroy() error {
 		m.label.Destroy(true, true)
 	}
 
+	if m.icon != nil {
+		m.icon.DestroyQIcon()
+	}
+
 	m.ctx = nil
 	m.cfn = nil
 	m.layout = nil
 	m.label = nil
+	m.icon = nil
 
 	return nil
 }

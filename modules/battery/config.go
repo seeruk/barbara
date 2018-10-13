@@ -12,3 +12,5 @@ type Config struct {
 // * Time remaining to empty: `calc (cat charge_now)" / "(cat current_now)`
 // * Time remaining to full: `calc "("(cat charge_full)" - "(cat charge_now)") / "(cat current_now)`
 // * Current %age: `cat capacity`
+// * From hours (decimal) into minutes:  0.6 * (h * 100)
+// * Show icon indicating charge, maybe use Paper-Mono-Dark theme?

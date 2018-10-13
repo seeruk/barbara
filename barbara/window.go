@@ -90,14 +90,14 @@ func (w *Window) addModuleToLayout(
 	alignment core.Qt__AlignmentFlag,
 	module Module,
 ) error {
-	widget, err := module.Render(layout.Widget())
+	widget, err := module.Render()
 	if err != nil {
 		return err
 	}
 
-	// Add the widget the layout, add it to our list of modules, so we can destroy it later if
-	// we need to re-render our Window(s).
-	layout.AddWidget(widget, 0, alignment)
+	// Add the Module's layout to the bar layout, and add it to our list of modules, so we can
+	// destroy it later if we need to re-render our Window(s).
+	layout.AddLayout(widget, 0)
 
 	// Add the module to the instantiated modules list, so that they may be destroyed later.
 	w.modules = append(w.modules, module)

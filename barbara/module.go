@@ -10,7 +10,7 @@ import (
 // presented on a Barbara bar.
 type Module interface {
 	// Render attempts to return a QWidget, which will be placed in one of the bar's layout boxes.
-	Render(parent widgets.QWidget_ITF) (widgets.QWidget_ITF, error)
+	Render() (widgets.QLayout_ITF, error)
 	// Destroy frees up all resources for this module, stopping any background processes.
 	Destroy() error
 }
