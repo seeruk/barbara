@@ -14,3 +14,5 @@ type Config struct {
 // * Current %age: `cat capacity`
 // * From hours (decimal) into minutes:  0.6 * (h * 100)
 // * Show icon indicating charge, maybe use Paper-Mono-Dark theme?
+// * Should time remaining show on click or something? Maybe we can show loads of battery info on
+//   a QMenu instead?
