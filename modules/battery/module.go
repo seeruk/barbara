@@ -35,6 +35,7 @@ type Module struct {
 // TODO(elliot): This is a mess. Let's make a service for battery information, then just use this as
 // the UI component for it, moving all of the actual logic out of here...
 // TODO(elliot): If we're at 100%, probably no need to show a time remaining...
+// TODO(elliot): Use file notification, e.g. inotify, instead of time intervals - of course!
 func NewModule(mctx barbara.ModuleContext) (barbara.Module, error) {
 	var config Config
 
