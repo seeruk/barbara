@@ -7,12 +7,7 @@ type Config struct {
 	PowerSupply string `json:"power_supply"`
 }
 
-// Notes:
-// * For me: `cd /sys/class/power_supply/BAT0`
-// * Time remaining to empty: `calc (cat charge_now)" / "(cat current_now)`
-// * Time remaining to full: `calc "("(cat charge_full)" - "(cat charge_now)") / "(cat current_now)`
-// * Current %age: `cat capacity`
-// * From hours (decimal) into minutes:  0.6 * (h * 100)
+// TODO:
 // * Show icon indicating charge, maybe use Paper-Mono-Dark theme?
 // * Should time remaining show on click or something? Maybe we can show loads of battery info on
 //   a QMenu instead?
