@@ -7,8 +7,3 @@ type Config struct {
 	PowerSupply string `json:"power_supply"`
 	// TODO(elliot): Specifying defaults would be useful for things like refresh interval...
 }
-
-// TODO:
-// * Show icon indicating charge, maybe use Paper-Mono-Dark theme?
-// * Should time remaining show on click or something? Maybe we can show loads of battery info on
-//   a QMenu instead?

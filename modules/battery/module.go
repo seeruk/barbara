@@ -17,9 +17,6 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
-// powerSupplyPath ...
-const powerSupplyPath = "/sys/class/power_supply"
-
 // Module ...
 type Module struct {
 	ctx context.Context
@@ -33,21 +30,25 @@ type Module struct {
 
 // NewModule returns a new battery Module instance.
 // TODO(elliot): This is a mess. Let's make a service for battery information, then just use this as
-// the UI component for it, moving all of the actual logic out of here...
-// TODO(elliot): If we're at 100%, probably no need to show a time remaining...
-// TODO(elliot): Use file notification, e.g. inotify, instead of time intervals - of course!
-func NewModule(mctx barbara.ModuleContext) (barbara.Module, error) {
-	var config Config
+// the UI component for it, moving all of the actual logic out of here.
+// TODO(elliot): If we're at 100%, probably no need to show a time remaining.
+func NewModule(notifierFactory *InfoNotifierFactory) barbara.ModuleConstructorFunc {
+	return func(mctx barbara.ModuleContext) (barbara.Module, error) {
+		var config Config
 
-	err := json.Unmarshal(mctx.Config, &config)
-	if err != nil {
-		// TODO(elliot): More context.
-		return nil, err
+		err := json.Unmarshal(mctx.Config, &config)
+		if err != nil {
+			// TODO(elliot): More context.
+			return nil, err
+		}
+
+		notifier := notifierFactory.Build(config.PowerSupply)
+		_ = notifier
+
+		return &Module{
+			config: config,
+		}, nil
 	}
-
-	return &Module{
-		config: config,
-	}, nil
 }
 
 // Render ...

@@ -1,5 +1,8 @@
 package battery
 
+// powerSupplyPath is the base path on a Linux system where battery information can be found.
+const powerSupplyPath = "/sys/class/power_supply"
+
 // Info contains all information that we need in the battery module. Some of this information is
 // shown on the menu popup.
 type Info struct {
@@ -12,14 +15,4 @@ type Info struct {
 	ModelName        string  // model_name
 	Status           string  // status
 	Technology       string  // technology
-}
-
-// InfoReader is a type that reads information about a battery.
-type InfoReader struct {
-	// ...
-}
-
-// NewInfoReader returns a new InfoReader instance.
-func NewInfoReader() *InfoReader {
-	return &InfoReader{}
 }

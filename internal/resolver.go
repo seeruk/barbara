@@ -19,9 +19,13 @@ import (
 type Resolver struct {
 	config Config
 
+	// Core services.
 	app        *barbara.Application
 	dispatcher *event.Dispatcher
 	xc         *xgb.Conn
+
+	// Module services.
+	batteryInfoNotifierFactory *battery.InfoNotifierFactory
 }
 
 // NewResolver returns a new instance of Resolver.
@@ -51,6 +55,16 @@ func (r *Resolver) ResolveApplication() *barbara.Application {
 	return r.app
 }
 
+// ResolveBatteryInfoNotifierFactory resolves the application's battery InfoNotifierFactory
+// instance.
+func (r *Resolver) ResolveBatteryInfoNotifierFactory() *battery.InfoNotifierFactory {
+	if r.batteryInfoNotifierFactory == nil {
+		r.batteryInfoNotifierFactory = battery.NewInfoNotifierFactory()
+	}
+
+	return r.batteryInfoNotifierFactory
+}
+
 // ResolveEventDispatcher resolves the application's event dispatcher.
 func (r *Resolver) ResolveEventDispatcher() *event.Dispatcher {
 	if r.dispatcher == nil {
@@ -67,7 +81,7 @@ func (r *Resolver) ResolveModuleFactory() *barbara.ModuleFactory {
 	// needs to be taken over an approach similar to sql.DB drivers. Modules may have dependencies
 	// on shared services (e.g. some kind of API client, for example).
 	mbf := barbara.NewModuleFactory()
-	mbf.RegisterConstructor("battery", battery.NewModule)
+	mbf.RegisterConstructor("battery", battery.NewModule(r.ResolveBatteryInfoNotifierFactory()))
 	mbf.RegisterConstructor("clock", clock.NewModule)
 	mbf.RegisterConstructor("menu", menu.NewModule)
 
